@@ -221,56 +221,47 @@ function borrarSesion() {
   try { localStorage.removeItem(CLAVE_SESION); } catch { /* ignorado */ }
 }
 
-/* Al volver del correo, Supabase devuelve los datos en el fragmento de
-   la URL, después de la almohadilla. Se recogen y se limpia la barra de
-   direcciones para no dejar el token a la vista ni en el historial. */
-function recogerSesionDeLaUrl() {
-  if (typeof window === "undefined" || !window.location.hash) return null;
-  const p = new URLSearchParams(window.location.hash.slice(1));
-  const token = p.get("access_token");
-  if (!token) return null;
+async function entrar(email, password) {
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const cru = d.error_description || d.msg || d.message || "";
+    // El servidor responde en inglés y con un mensaje deliberadamente vago,
+    // para no revelar si el fallo es del correo o de la contraseña.
+    if (/invalid login/i.test(cru)) throw new Error("Correo o contraseña incorrectos.");
+    if (/email not confirmed/i.test(cru)) throw new Error("La cuenta aún no está confirmada. Revisa el correo de invitación.");
+    if (/rate limit/i.test(cru)) throw new Error("Demasiados intentos seguidos. Espera un momento.");
+    throw new Error(cru || `El servidor respondió ${r.status}`);
+  }
   const sesion = {
-    access_token: token,
-    refresh_token: p.get("refresh_token") || "",
-    expira: Date.now() + (Number(p.get("expires_in") || 3600) - 60) * 1000,
-    correo: "",
+    access_token: d.access_token,
+    refresh_token: d.refresh_token || "",
+    expira: Date.now() + (Number(d.expires_in || 3600) - 60) * 1000,
+    correo: d.user?.email || email,
   };
   guardarSesion(sesion);
-  window.history.replaceState(null, "", window.location.pathname + window.location.search);
   return sesion;
 }
 
-async function pedirEnlace(email) {
-  const r = await fetch(
-    `${SUPABASE_URL}/auth/v1/otp?redirect_to=${encodeURIComponent(window.location.origin + window.location.pathname)}`,
-    {
-      method: "POST",
-      headers: { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
-      // create_user en false: no se dan de alta cuentas desde la web
-      body: JSON.stringify({ email, create_user: false }),
-    }
-  );
-  if (!r.ok) {
-    const d = await r.json().catch(() => ({}));
-    throw new Error(d.msg || d.error_description || `El servidor respondió ${r.status}`);
-  }
-}
-
-function PantallaAcceso() {
+function PantallaAcceso({ onEntrar }) {
   const [email, setEmail] = useState("");
-  const [estado, setEstado] = useState("inicio"); // inicio | enviando | enviado
+  const [pass, setPass] = useState("");
+  const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState("");
 
-  const enviar = async () => {
-    if (!email.trim()) return;
-    setEstado("enviando");
+  const hacerEntrar = async () => {
+    if (!email.trim() || !pass) return;
+    setOcupado(true);
     setError("");
     try {
-      await pedirEnlace(email.trim());
-      setEstado("enviado");
+      onEntrar(await entrar(email.trim(), pass));
     } catch (e) {
       setError(e.message);
-      setEstado("inicio");
+      setOcupado(false);
     }
   };
 
@@ -278,42 +269,34 @@ function PantallaAcceso() {
     <div className="vs-acceso">
       <div className="vs-acceso-caja">
         <h1>Selector de ventilación general</h1>
-        {estado === "enviado" ? (
-          <>
-            <p>
-              Enviado. Abre el correo que acabas de recibir en <b>{email}</b> y pulsa
-              el enlace: volverás aquí con la sesión iniciada.
-            </p>
-            <p className="vs-acceso-pie">
-              Si no llega en un par de minutos, mira en la carpeta de no deseados.
-              Solo reciben enlace las cuentas dadas de alta.
-            </p>
-            <button className="vs-btn ghost" onClick={() => setEstado("inicio")}>
-              Usar otro correo
-            </button>
-          </>
-        ) : (
-          <>
-            <p>Introduce tu correo y te llega un enlace de acceso. No hay contraseña.</p>
-            <label className="vs-campo">
-              <span className="vs-lab">Correo</span>
-              <input type="email" value={email} autoComplete="email"
-                placeholder="nombre@empresa.com"
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && enviar()} />
-            </label>
-            {error && <p className="vs-err">{error}</p>}
-            <button className="vs-btn" onClick={enviar}
-              disabled={estado === "enviando" || !email.trim()}
-              style={{ marginTop: 12 }}>
-              {estado === "enviando" ? "Enviando…" : "Enviar enlace"}
-            </button>
-            <p className="vs-acceso-pie">
-              El acceso es por invitación. Si tu correo no está dado de alta, no
-              recibirás el enlace.
-            </p>
-          </>
-        )}
+        <p>Introduce tus credenciales para acceder al catálogo.</p>
+
+        <label className="vs-campo">
+          <span className="vs-lab">Usuario<em>correo</em></span>
+          <input type="email" value={email} autoComplete="username"
+            placeholder="nombre@empresa.com"
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && hacerEntrar()} />
+        </label>
+
+        <label className="vs-campo" style={{ marginTop: 11 }}>
+          <span className="vs-lab">Contraseña</span>
+          <input type="password" value={pass} autoComplete="current-password"
+            onChange={(e) => setPass(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && hacerEntrar()} />
+        </label>
+
+        {error && <p className="vs-err">{error}</p>}
+
+        <button className="vs-btn" onClick={hacerEntrar}
+          disabled={ocupado || !email.trim() || !pass} style={{ marginTop: 12 }}>
+          {ocupado ? "Entrando…" : "Entrar"}
+        </button>
+
+        <p className="vs-acceso-pie">
+          Las cuentas las da de alta el administrador. Si olvidas la contraseña,
+          pídele que te la restablezca.
+        </p>
       </div>
     </div>
   );
@@ -1106,7 +1089,7 @@ function PaginaRecirculacion({ catalogo, ancho, largo, hombro, cumbrera, onAncho
 /* ---------------------------- app ---------------------------- */
 
 export default function SelectorVentilacion() {
-  const [sesion, setSesion] = useState(() => recogerSesionDeLaUrl() || leerSesion());
+  const [sesion, setSesion] = useState(leerSesion);
   const [vista, setVista] = useState("selector");
   const [recirEq, setRecirEq] = useState(null);
   const [recirUds, setRecirUds] = useState(null);
@@ -1367,7 +1350,14 @@ export default function SelectorVentilacion() {
     null, 2
   );
 
-  if (!sesion) return <><style>{ESTILOS}</style><PantallaAcceso /></>;
+  if (!sesion) {
+    return (
+      <>
+        <style>{ESTILOS}</style>
+        <PantallaAcceso onEntrar={setSesion} />
+      </>
+    );
+  }
 
   return (
     <div className="vs-root">
