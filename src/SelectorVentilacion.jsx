@@ -43,241 +43,11 @@ const TIPOS = {
 const FT3_POR_M3 = 35.3147;
 const FT2_POR_M2 = 10.7639;
 
-/* Catálogo integrado: 204 equipos del inventario con sus curvas.
-   Va comprimido a propósito, para que el artefacto pese poco: las
-   presiones son siempre las mismas ocho, así que de cada curva solo
-   se guardan los caudales en su hueco correspondiente, y los campos
-   repetidos van en tablas de consulta. Se expande al cargar. */
-const PRESIONES = [0,0.125,0.25,0.375,0.5,0.75,1,1.5];
-const T_FAM = ["vent_industriales","vent_comerciales","reci_industriales","reci_comerciales"];
-const T_TIPO = ["Axial","Centrífugo","Tuboaxial"];
-const T_LINEA = ["A42","AC16","AC24","AC42","AC48","AE","AF42","AH20","C16","C20","C24","C35","C42","C48","EVA","F20","F20HVLS"];
-const T_SERV = ["Extractor","Inyector","Inyector/Extractor","Recirculador"];
-const T_TRANS = ["Directa","Fajas y poleas"];
+/* El catálogo ya no viaja dentro del archivo: con el acceso cerrado,
+   incrustarlo sería dejarlo a la vista de cualquiera que abra el código
+   fuente. Se carga desde Supabase después de iniciar sesión. */
+const CATALOGO_DEMO = [];
 
-/* [modelo, familia, tipo, linea, diámetro, HP, servicio, transmisión, caudales] */
-const CRUDO = [
-["AC2000C2MM0.5 850D",0,0,2,24,0.5,0,0,"4695,4241,2200"],
-["A2000P1MM0.5 800",0,0,2,24,0.5,1,1,"4695,4241,2200"],
-["A2000P1MM0.5 800 EXP",0,0,2,24,0.5,1,1,"4695,4241,2200"],
-["A2000P2MM0.5 800",0,0,2,24,0.5,0,1,"4695,4241,2200"],
-["A2000P2MM0.5 800 EXP",0,0,2,24,0.5,0,1,"4695,4241,2200"],
-["A4000C1MM1.0 480",0,0,0,42,1,1,1,"16800,13400,8500,4800"],
-["A4000C1MM2.0 575",0,0,0,42,2,1,1,"21400,19400,16600,10000"],
-["A4000C1MT2.0 575",0,0,0,42,2,1,1,"21400,19400,16600,10000"],
-["A4000C2MM1.0 500",0,0,0,42,1,0,1,"16800,13400,8500,4800"],
-["A4000C2MM2.0 575",0,0,0,42,2,0,1,"21400,19400,16600,10000"],
-["A4000C2MT1.0 480",0,0,0,42,1,0,1,"16800,13400,8500,4800"],
-["A4000C2MT2.0 575",0,0,0,42,2,0,1,"21400,19400,16600,10000"],
-["A4000P1MM1.0 480",0,0,0,42,1,1,1,"16800,13400,8500,4800"],
-["A4000P1MM2.0 575",0,0,0,42,2,1,1,"21400,19400,16600,10000"],
-["A4000P1MT2.0 575",0,0,0,42,2,1,1,"21400,19400,16600,10000"],
-["A4000P2MM1.0 480",0,0,0,42,1,0,1,"16800,13400,8500,4800"],
-["A4000P2MM2.0 575",0,0,0,42,2,0,1,"21400,19400,16600,10000"],
-["A4000P2MT1.0  480",0,0,0,42,1,0,1,"16800,13400,8500,4800"],
-["A4000P2MT1.0 480",0,0,0,42,1,0,1,"16800,13400,8500,4800"],
-["A4000P2MT2.0 575",0,0,0,42,2,0,1,"21400,19400,16600,10000"],
-["A4000P2MT2.0 575 EP",0,0,0,42,2,0,1,"21400,19400,16600,10000"],
-["A4000P2MT2.0 575 SS",0,0,0,42,2,0,1,"21400,19400,16600,10000"],
-["AC20002MM0.5 850D",0,0,2,24,0.5,0,0,"4695,4241,2200"],
-["AC2000C1MM0.5 800",0,0,2,24,0.5,1,1,"4695,4241,2200"],
-["AC2000C1MM0.5 850D",0,0,2,24,0.5,1,0,"4695,4241,2200"],
-["AC2000C1MM1.0 1200",0,0,2,24,1,1,1,"7865,6715,5825"],
-["AC2000C2MM0.5 800",0,0,2,24,0.5,0,1,"4695,4241,2200"],
-["AC2000C2MM1.0 1200",0,0,2,24,1,0,1,"7865,6715,5825"],
-["AC2000C2MT1.0 1200",0,0,2,24,1,0,1,"7865,6715,5825"],
-["AC2000P1MM0.5 800",0,0,2,24,0.5,1,1,"4695,4241,2200"],
-["AC2000P1MM0.5 850D",0,0,2,24,0.5,1,0,"4695,4241,2200"],
-["AC2000P1MM1.0 1140D",0,0,2,24,1,1,0,"7865,6715,5825"],
-["AC2000P1MM1.0 1200",0,0,2,24,1,1,1,"7865,6715,5825"],
-["AC2000P1MT0.5 800",0,0,2,24,0.5,1,1,"4695,4241,2200"],
-["AC2000P1MT1.0 1200",0,0,2,24,1,1,1,"7865,6715,5825"],
-["AC2000P2MM0.5 800",0,0,2,24,0.5,0,1,"4695,4241,2200"],
-["AC2000P2MM0.5 850D",0,0,2,24,0.5,0,0,"4695,4241,2200"],
-["AC2000P2MM1.0 1140D",0,0,2,24,1,0,0,"7865,6715,5825"],
-["AC2000P2MM1.0 1200",0,0,2,24,1,0,1,"7865,6715,5825"],
-["AC2000P2MT0.5 800",0,0,2,24,0.5,0,1,"4695,4241,2200"],
-["AC2000P2MT1.0 1200",0,0,2,24,1,0,1,"7865,6715,5825"],
-["AC2000P2MT1.0 EPX EP",0,0,2,24,1,0,1,"7865,6715,5825"],
-["AC40002MT3.0 635",0,0,3,42,3,0,1,"24000,22200,20300,18000"],
-["AC4000P1MT3.0 575",0,0,3,42,3,1,1,"24000,22200,20300,18000"],
-["AC40C2MT3.0 635",0,0,3,42,3,0,1,"24000,22200,20300,18000"],
-["AC40P2MT3.0 635",0,0,3,42,3,0,1,"24000,22200,20300,18000"],
-["AC50001MT3.0 500",0,0,4,48,3,1,1,"28740,25700,18000"],
-["AC50001MT5.0 635",0,0,4,48,5,1,1,"33200,27300,23500"],
-["AC50002MM3.0 500",0,0,4,48,3,0,1,"28740,25700,18000"],
-["AC50002MT3.0 500",0,0,4,48,3,0,1,"28740,25700,18000"],
-["AC50002MT5.0 635",0,0,4,48,5,0,1,"33200,27300,23500"],
-["AC5000C2MT3.0 500",0,0,4,48,3,0,1,"28740,25700,18000"],
-["AC5000C2MT5.0 635",0,0,4,48,5,0,1,"33200,27300,23500"],
-["AC5000P1MT3.0 500",0,0,4,48,3,1,1,"28740,25700,18000"],
-["AC5000P1MT5.0 635",0,0,4,48,5,1,1,"33200,27300,23500"],
-["AC5000P2MT2 440",0,0,4,48,2,0,1,"25540,22529,17900"],
-["AC9000C1MM1/8 1625",0,0,1,16,0.125,1,0,"2120,1800,1450"],
-["AC9000C2MM1/8 1625",0,0,1,16,0.125,0,0,"2120,1800,1450"],
-["AC9000P1MM1/8 1625",0,0,1,16,0.125,1,0,"2120,1800,1450"],
-["AC9000P2MM1/8 1625",0,0,1,16,0.125,0,0,"2120,1800,1450"],
-["AC9000P2MM1/8 1625 U",0,0,1,16,0.125,0,0,"2120,1800,1450"],
-["AC9000P2MM1/8 1625T",0,0,1,16,0.125,0,0,"2120,1800,1450"],
-["AE00012MM0.5",0,0,5,0,0.5,2,1,"1904,1812,1719,,1429"],
-["AE00012MM0.5 1750",0,0,5,0,0.5,2,1,"1904,1812,1719,,1429"],
-["AE00012MM1.0 1725",0,0,5,0,1,2,1,"2432,2360,2287,,2126,1905"],
-["AE00012MT0.5 2200 PAL",0,0,5,0,0.5,2,1,"1904,1812,1719,,1429"],
-["AE00012MT1.0 1725",0,0,5,0,1,2,1,"2432,2360,2287,,2126,1905"],
-["AE00012MT1.0 1725 SS",0,0,5,0,1,2,1,"2432,2360,2287,,2126,1905"],
-["AE00016MM0.5  1725",0,0,5,0,0.5,2,1,"2727,2530,2288,,1335,711"],
-["AE00016MM1.0  1725",0,0,5,0,1,2,1,"3859,3720,3580,,3228,2744,1892"],
-["AE00016MM1.0 2547",0,0,5,0,1,2,1,"3859,3720,3580,,3228,2744,1892"],
-["AE00016MT1.0 2547",0,0,5,0,1,2,1,"3859,3720,3580,,3228,2744,1892"],
-["AE00018MM1.0 1750",0,0,5,0,1,2,1,"4671,4504,4321,,3914,3421,2163"],
-["AE00018MT1.0 1725",0,0,5,0,1,2,1,"4671,4504,4321,,3914,3421,2163"],
-["AE00024MM1.0 1688",0,0,5,0,1,2,1,"7085,6742,6371,,5484,3164"],
-["AE00024MM2.0 1688",0,0,5,0,2,2,1,"9112,8856,8573,,7983,7290,6445"],
-["AE00024MM3.0 1725",0,0,5,0,3,2,1,"10310,10084,9850,,9332,8769,8143"],
-["AE00024MT1.0 1688",0,0,5,0,1,2,1,"7085,6742,6371,,5484,3164"],
-["AE00024MT2.0 1688",0,0,5,0,2,2,1,"9112,8856,8573,,7983,7290,6445"],
-["AE00024MT3.0 1725",0,0,5,0,3,2,1,"10310,10084,9850,,9332,8769,8143"],
-["AE00030MM2.0 1143",0,0,5,0,2,2,1,"12190,11710,11180,,9990,8485"],
-["AE00030MM3.0 1320",0,0,5,0,3,2,1,"14040,13630,13180,,12220,11105,9740"],
-["AE00030MT3.0 1320",0,0,5,0,3,2,1,"14040,13630,13180,,12220,11105,9740"],
-["AE00031MT5.0",0,0,5,0,5,2,1,"16495,16150,15785,,14995,14145,13190"],
-["AE00034MM5.0",0,0,5,0,5,2,1,"19290,18800,18280,,17150,15880,14445"],
-["AE00034MT5.0 1251 PAL",0,0,5,0,5,2,1,"19290,18800,18280,,17150,15880,14445"],
-["AE3000P1MM2.0 815",0,0,5,0,2,2,1,"12190,11710,11180,,9990,8485"],
-["AE3000P1MT2.0 815",0,0,5,0,2,2,1,"12190,11710,11180,,9990,8485"],
-["AF4000C1MT3.0 715",0,0,6,42,3,1,1,"18000,15200,8600"],
-["AF4000P1MM2.0 715",0,0,6,42,2,1,1,"16600,10000,5600"],
-["AF4000P1MT2.0 575",0,0,6,42,2,1,1,"16600,10000,5600"],
-["AF4000P1MT3.0 715",0,0,6,42,3,1,1,"18000,15200,8600"],
-["AF4000P1MT3.0 715 EP",0,0,6,42,3,1,1,"18000,15200,8600"],
-["AF4000P1MT3.0 715 VB",0,0,6,42,3,1,1,"18000,15200,8600"],
-["AF4000P2MT3.0 715PC",0,0,6,42,3,0,1,"18000,15200,8600"],
-["AH14MM0.26 1360D",0,1,7,20,0.26,0,0,"1416,,1327,1233"],
-["AH20MM0.5 850D",0,1,7,20,0.5,0,0,"3750,,3400,,3112,1200"],
-["AH20MM1.0 1140",0,1,7,20,1,0,1,"5400,,4958,,4508,3988,3169"],
-["AH20MM1.0 1140D",0,1,7,20,1,0,0,"5400,,4958,,4508,3988,3169"],
-["AH20MM2.0 1465",0,1,7,20,2,0,1,"6806,,6451,,6108,5748,5350,4289"],
-["AH20MT1.0 1000",0,1,7,20,1,0,1,"5400,,4958,,4508,3988,3169"],
-["AH20MT1.0 1140",0,1,7,20,1,0,1,"5400,,4958,,4508,3988,3169"],
-["AH20MT1.0 1140 EP",0,1,7,20,1,0,1,"5400,,4958,,4508,3988,3169"],
-["C10001MM0.25 1625",0,0,9,20,0.25,1,1,"3000,2800,2200,1700"],
-["C10002MM0.25 1625",0,0,9,20,0.25,0,1,"3000,2800,2200,1700"],
-["C20001MM0.5 700",0,0,10,24,0.5,1,1,"6000,4695,4241,2200"],
-["C20001MM0.5 800",0,0,10,24,0.5,1,1,"6000,4695,4241,2200"],
-["C20001MM0.5 800-B",0,0,10,24,0.5,1,1,"6000,4695,4241,2200"],
-["C20001MM0.5 800MP",0,0,10,24,0.5,1,1,"6000,4695,4241,2200"],
-["C20001MM0.5 850D",0,0,10,24,0.5,1,0,"6000,4695,4241,2200"],
-["C20001MM1.0 1140D",0,0,10,24,1,1,0,"8850,7865,6715,5825"],
-["C20001MM1.0 1200",0,0,10,24,1,1,1,"8850,7865,6715,5825"],
-["C20001MM1.0 1200 SS",0,0,10,24,1,1,1,"8850,7865,6715,5825"],
-["C20001MM1.0 1725",0,0,10,24,1,1,1,"8850,7865,6715,5825"],
-["C20001MT0.5 800",0,0,10,24,0.5,1,1,"6000,4695,4241,2200"],
-["C20001MT1.0 1200",0,0,10,24,1,1,1,"8850,7865,6715,5825"],
-["C20002MM0.5 700",0,0,10,24,0.5,0,1,"6000,4695,4241,2200"],
-["C20002MM0.5 800",0,0,10,24,0.5,0,1,"6000,4695,4241,2200"],
-["C20002MM0.5 800-B",0,0,10,24,0.5,0,1,"6000,4695,4241,2200"],
-["C20002MM0.5 800MP",0,0,10,24,0.5,0,1,"6000,4695,4241,2200"],
-["C20002MM0.5 850D",0,0,10,24,0.5,0,0,"6000,4695,4241,2200"],
-["C20002MM1.0 1140D",0,0,10,24,1,0,0,"8850,7865,6715,5825"],
-["C20002MM1.0 1200",0,0,10,24,1,0,1,"8850,7865,6715,5825"],
-["C20002MM1.0 1200SS",0,0,10,24,1,0,1,"8850,7865,6715,5825"],
-["C20002MM1.0 1725",0,0,10,24,1,0,1,"8850,7865,6715,5825"],
-["C20002MT0.5 800",0,0,10,24,0.5,0,1,"6000,4695,4241,2200"],
-["C20002MT1.0 1200",0,0,10,24,1,0,1,"8850,7865,6715,5825"],
-["C20002MT1.0 1200 EPX",0,0,10,24,1,0,1,"8850,7865,6715,5825"],
-["C20002MT1.0 1725",0,0,10,24,1,0,1,"8850,7865,6715,5825"],
-["C30001MM1.0 615",0,0,11,35,1,1,1,"11000,9000,7000,4000"],
-["C30001MT1.0 615",0,0,11,35,1,1,1,"11000,9000,7000,4000"],
-["C30001MT1.0 615SS",0,0,11,35,1,1,1,"11000,9000,7000,4000"],
-["C30002MM1.0 615",0,0,11,35,1,0,1,"11000,9000,7000,4000"],
-["C30002MM1.0 615-S",0,0,11,35,1,0,1,"11000,9000,7000,4000"],
-["C30002MT1.0 615",0,0,11,35,1,0,1,"11000,9000,7000,4000"],
-["C40001MM1.0 500",0,0,12,42,1,1,1,"17400,14000,9100,5400"],
-["C40001MM2.0 645",0,0,12,42,2,1,1,"22000,21400,17200,10600"],
-["C40001MT1.0 500",0,0,12,42,1,1,1,"17400,14000,9100,5400"],
-["C40001MT2 575 EPP",0,0,12,42,2,1,1,"22000,21400,17200,10600"],
-["C40001MT2.0 575 EP",0,0,12,42,2,1,1,"22000,21400,17200,10600"],
-["C40001MT2.0 645",0,0,12,42,2,1,1,"22000,21400,17200,10600"],
-["C40001MT2.O 575 EP.",0,0,12,42,2,1,1,"22000,21400,17200,10600"],
-["C40001MT3.0 715",0,0,12,42,3,1,1,"24600,22800,20900,18600"],
-["C40002MM2.0 645",0,0,12,42,2,0,1,"22000,21400,17200,10600"],
-["C40002MT1.0 500",0,0,12,42,1,0,1,"17400,14000,9100,5400"],
-["C40002MT1.0 500 EP",0,0,12,42,1,0,1,"17400,14000,9100,5400"],
-["C40002MT2.0 645",0,0,12,42,2,0,1,"22000,21400,17200,10600"],
-["C40002MT2.0 645 ROM",0,0,12,42,2,0,1,"22000,21400,17200,10600"],
-["C40002MT3.0 715",0,0,12,42,3,0,1,"24600,22800,20900,18600"],
-["C50001MM2.0 440",0,0,13,48,2,1,1,"28200,25540,22529,17900"],
-["C50001MM3.0 500",0,0,13,48,3,1,1,"32000,28740,25700,18000"],
-["C50001MM3.0 500 EP",0,0,13,48,3,1,1,"32000,28740,25700,18000"],
-["C50001MT2.0 440",0,0,13,48,2,1,1,"28200,25540,22529,17900"],
-["C50001MT3.0 500",0,0,13,48,3,1,1,"32000,28740,25700,18000"],
-["C50001MT3.0 500 EP",0,0,13,48,3,1,1,"32000,28740,25700,18000"],
-["C50001MT5.0 635",0,0,13,48,5,1,1,"40000,33200,27300,23500"],
-["C50002MM2.0 440",0,0,13,48,2,0,1,"28200,25540,22529,17900"],
-["C50002MM3.0 500",0,0,13,48,3,0,1,"32000,28740,25700,18000"],
-["C50002MM3.0 500 EP",0,0,13,48,3,0,1,"32000,28740,25700,18000"],
-["C50002MM3.0 500 ROM",0,0,13,48,3,0,1,"32000,28740,25700,18000"],
-["C50002MT2 440SS",0,0,13,48,2,0,1,"28200,25540,22529,17900"],
-["C50002MT2.0 440",0,0,13,48,2,0,1,"28200,25540,22529,17900"],
-["C50002MT2.0 440 ROM",0,0,13,48,2,0,1,"28200,25540,22529,17900"],
-["C50002MT3.0 500",0,0,13,48,3,0,1,"32000,28740,25700,18000"],
-["C50002MT3.0 500 EP",0,0,13,48,3,0,1,"32000,28740,25700,18000"],
-["C50002MT3.0 500 ROM",0,0,13,48,3,0,1,"32000,28740,25700,18000"],
-["C50002MT5.0 635",0,0,13,48,5,0,1,"40000,33200,27300,23500"],
-["C90001MM1/8 1625",0,0,8,16,0.125,1,0,"2250,2120,1800,1450"],
-["C90001MM1/8 1625 U",0,0,8,16,0.125,1,0,"2250,2120,1800,1450"],
-["C90001MM1/8 1625SS",0,0,8,16,0.125,1,0,"2250,2120,1800,1450"],
-["C90002MM1/8 1625",0,0,8,16,0.125,0,0,"2250,2120,1800,1450"],
-["C90002MM1/8 1625SS",0,0,8,16,0.125,0,0,"2250,2120,1800,1450"],
-["EVACENT_DOWN18MM2.0",0,1,14,0,2,1,0,"10000"],
-["EVACENT_UP18MM2.0",0,1,14,0,2,1,0,"10000"],
-["F20APB20-4",1,0,15,0,0.04,0,0,"260"],
-["F20APB25-5",1,0,15,0,0.054,0,0,"400"],
-["F20APB30-6",1,0,15,0,0.06,0,0,"580"],
-["F20APB30-6B",1,0,15,0,0.074,0,0,"582"],
-["F20APT20-4",1,0,15,0,0.04,0,0,"260"],
-["F20APT25-5",1,0,15,0,0.054,0,0,"400"],
-["F20DPT12-1C",1,1,15,0,0.034,0,0,"52"],
-["F20DPT16-2D",1,1,15,0,0.047,0,0,"118"],
-["F20DZNO3.5",1,2,15,0,0.161,0,0,"1500"],
-["F20DZNO5",1,2,15,0,0.496,0,0,"4130"],
-["F20FA-40B",1,0,15,0,0.201,0,0,"1695"],
-["F20FAC-45",1,0,15,0,0.5,0,0,"3530"],
-["F20FAC-60L",1,0,15,0,0.5,0,0,"4030"],
-["F20FB-45PARED",3,0,15,0,0.161,3,0,"5295"],
-["F20FB-65PARED",3,0,15,0,0.308,3,0,"7250"],
-["F20FB-75PARED",3,0,15,0,0.469,3,0,"10250"],
-["F20FE-30PISO",3,0,15,0,0.074,3,0,"1590"],
-["F20FE-45",3,0,15,0,0.161,3,0,"4240"],
-["F20FE-50PISO",3,0,15,0,0.174,3,0,"4950"],
-["F20FS65PED",3,0,15,0,0.308,3,0,"7250"],
-["F20FS75PED",3,0,15,0,0.469,3,0,"10250"],
-["F20SHT-30 PORTATIL",1,0,15,0,1,2,0,"2120"],
-["F20S265",1,0,15,0,0.04,2,0,"1550"],
-["F20S525",1,0,15,0,0.05,2,0,"1550"],
-["F20S550",1,0,15,0,0.125,2,0,"1550"],
-["F20GLF24MT0.5",0,0,15,0,0.5,2,1,"5500"],
-["F20GLF48MT1.5",0,0,15,0,1.5,2,1,"26190"],
-["F20HVLS-10-6B",2,0,16,120,0.87,3,0,"176575"],
-["F20HVLS10-5B",2,0,16,120,0.87,3,0,"176575"],
-["F20HVLS-18-6B",2,0,16,216,1.3,3,0,"381400"],
-];
-
-const CATALOGO_DEMO = CRUDO.map(([modelo, f, t, l, d, hp, sv, tr, c]) => {
-  const curva = [];
-  c.split(",").forEach((v, i) => { if (v !== "") curva.push([+v, PRESIONES[i], hp]); });
-  curva.sort((a, b) => a[0] - b[0]);
-  return {
-    modelo, curva,
-    categoria: T_FAM[f],
-    tipo: T_TIPO[t],
-    linea: l >= 0 ? T_LINEA[l] : undefined,
-    diametro: d || undefined,
-    hp: hp || undefined,
-    servicio: sv >= 0 ? T_SERV[sv] : undefined,
-    transmision: tr >= 0 ? T_TRANS[tr] : undefined,
-  };
-});
 
 function interpolar(puntos, x, col) {
   if (x <= puntos[0][0]) return puntos[0][col];
@@ -360,16 +130,16 @@ function urlPublica(base, bucket, ruta) {
   return `${base.replace(/\/$/, "")}/storage/v1/object/public/${bucket}/${ruta.replace(/^\//, "")}`;
 }
 
-async function cargarDesdeSupabase(base, clave) {
+async function cargarDesdeSupabase(base, clave, token) {
   const raiz = base.replace(/\/$/, "");
   const url = `${raiz}/rest/v1/${VISTA_EQUIPOS}?select=*&order=categoria.asc,modelo.asc&limit=2000`;
   const r = await fetch(url, {
-    headers: { apikey: clave, Authorization: `Bearer ${clave}`, Accept: "application/json" },
+    headers: { apikey: clave, Authorization: `Bearer ${token || clave}`, Accept: "application/json" },
   });
   if (!r.ok) {
     const detalle = await r.text().catch(() => "");
     const pistas = {
-      401: "Clave anon incorrecta o caducada. Cópiala de Settings › API › anon public.",
+      401: "La sesión caducó. Vuelve a pedir el enlace de acceso.",
       403: `La política RLS no deja leer. Comprueba el grant select sobre ${VISTA_EQUIPOS}.`,
       404: `No existe la vista ${VISTA_EQUIPOS}. ¿Ejecutaste ya los scripts SQL?`,
     };
@@ -397,6 +167,156 @@ async function cargarDesdeSupabase(base, clave) {
         .sort((a, b) => a[0] - b[0]),
     }))
     .filter((e) => e.curva.length >= 1);
+}
+
+/* ------------------------------ Sesión ------------------------------ *
+ * Acceso por enlace al correo. No hay contraseña que guardar ni que
+ * perder, y con create_user en false solo entra quien ya esté dado de
+ * alta: si alguien pide acceso con un correo desconocido, no recibe
+ * nada. Las altas se hacen desde el panel de Supabase.
+ * ------------------------------------------------------------------- */
+
+const ESTILOS = `
+  .vs-acceso{--ink:#2b2f6e;--graf:#666;--mudo:#8a8a93;--rule:#dcdce2;--air:#ff8300;
+    --air-txt:#a85700;--sig:#c62828;--sigsoft:#fbeaea;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:#f2f2f5;color:var(--ink);min-height:100vh;display:flex;
+    align-items:center;justify-content:center;padding:24px}
+  .vs-acceso *{box-sizing:border-box}
+  .vs-acceso-caja{background:#fff;border:1px solid var(--rule);border-radius:4px;
+    padding:30px;max-width:400px;width:100%}
+  .vs-acceso-caja h1{margin:0 0 14px;font-size:21px;font-weight:650;letter-spacing:-.02em}
+  .vs-acceso-caja p{margin:0 0 14px;font-size:14px;color:var(--graf);line-height:1.55}
+  .vs-acceso-pie{font-size:12px!important;color:var(--mudo)!important;margin:16px 0 0!important}
+  .vs-acceso .vs-campo{display:flex;flex-direction:column;gap:4px}
+  .vs-acceso .vs-lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--mudo)}
+  .vs-acceso input{width:100%;font-family:var(--mono);font-size:14px;padding:9px;
+    border:1px solid var(--rule);border-radius:3px;background:#fcfcfd;color:var(--ink)}
+  .vs-acceso input:focus-visible,.vs-acceso button:focus-visible{outline:2px solid var(--air);outline-offset:1px}
+  .vs-acceso .vs-btn{font:inherit;font-size:13px;font-weight:550;padding:9px 16px;
+    border-radius:3px;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:#fff}
+  .vs-acceso .vs-btn.ghost{background:transparent;color:var(--ink)}
+  .vs-acceso .vs-btn:disabled{opacity:.45;cursor:default}
+  .vs-acceso .vs-err{background:var(--sigsoft);border-left:2px solid var(--sig);
+    padding:8px 11px;border-radius:2px;font-size:12.5px;color:#8c1d1d;margin:10px 0 0}
+`;
+
+const CLAVE_SESION = "sv_sesion";
+
+function leerSesion() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CLAVE_SESION) || "null");
+    if (s && s.access_token && s.expira > Date.now()) return s;
+  } catch { /* almacenamiento no disponible o dato corrupto */ }
+  return null;
+}
+
+function guardarSesion(s) {
+  try { localStorage.setItem(CLAVE_SESION, JSON.stringify(s)); } catch { /* ignorado */ }
+}
+
+function borrarSesion() {
+  try { localStorage.removeItem(CLAVE_SESION); } catch { /* ignorado */ }
+}
+
+/* Al volver del correo, Supabase devuelve los datos en el fragmento de
+   la URL, después de la almohadilla. Se recogen y se limpia la barra de
+   direcciones para no dejar el token a la vista ni en el historial. */
+function recogerSesionDeLaUrl() {
+  if (typeof window === "undefined" || !window.location.hash) return null;
+  const p = new URLSearchParams(window.location.hash.slice(1));
+  const token = p.get("access_token");
+  if (!token) return null;
+  const sesion = {
+    access_token: token,
+    refresh_token: p.get("refresh_token") || "",
+    expira: Date.now() + (Number(p.get("expires_in") || 3600) - 60) * 1000,
+    correo: "",
+  };
+  guardarSesion(sesion);
+  window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  return sesion;
+}
+
+async function pedirEnlace(email) {
+  const r = await fetch(
+    `${SUPABASE_URL}/auth/v1/otp?redirect_to=${encodeURIComponent(window.location.origin + window.location.pathname)}`,
+    {
+      method: "POST",
+      headers: { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+      // create_user en false: no se dan de alta cuentas desde la web
+      body: JSON.stringify({ email, create_user: false }),
+    }
+  );
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}));
+    throw new Error(d.msg || d.error_description || `El servidor respondió ${r.status}`);
+  }
+}
+
+function PantallaAcceso() {
+  const [email, setEmail] = useState("");
+  const [estado, setEstado] = useState("inicio"); // inicio | enviando | enviado
+  const [error, setError] = useState("");
+
+  const enviar = async () => {
+    if (!email.trim()) return;
+    setEstado("enviando");
+    setError("");
+    try {
+      await pedirEnlace(email.trim());
+      setEstado("enviado");
+    } catch (e) {
+      setError(e.message);
+      setEstado("inicio");
+    }
+  };
+
+  return (
+    <div className="vs-acceso">
+      <div className="vs-acceso-caja">
+        <h1>Selector de ventilación general</h1>
+        {estado === "enviado" ? (
+          <>
+            <p>
+              Enviado. Abre el correo que acabas de recibir en <b>{email}</b> y pulsa
+              el enlace: volverás aquí con la sesión iniciada.
+            </p>
+            <p className="vs-acceso-pie">
+              Si no llega en un par de minutos, mira en la carpeta de no deseados.
+              Solo reciben enlace las cuentas dadas de alta.
+            </p>
+            <button className="vs-btn ghost" onClick={() => setEstado("inicio")}>
+              Usar otro correo
+            </button>
+          </>
+        ) : (
+          <>
+            <p>Introduce tu correo y te llega un enlace de acceso. No hay contraseña.</p>
+            <label className="vs-campo">
+              <span className="vs-lab">Correo</span>
+              <input type="email" value={email} autoComplete="email"
+                placeholder="nombre@empresa.com"
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && enviar()} />
+            </label>
+            {error && <p className="vs-err">{error}</p>}
+            <button className="vs-btn" onClick={enviar}
+              disabled={estado === "enviando" || !email.trim()}
+              style={{ marginTop: 12 }}>
+              {estado === "enviando" ? "Enviando…" : "Enviar enlace"}
+            </button>
+            <p className="vs-acceso-pie">
+              El acceso es por invitación. Si tu correo no está dado de alta, no
+              recibirás el enlace.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /* ---------------------------- IA ---------------------------- */
@@ -1186,6 +1106,7 @@ function PaginaRecirculacion({ catalogo, ancho, largo, hombro, cumbrera, onAncho
 /* ---------------------------- app ---------------------------- */
 
 export default function SelectorVentilacion() {
+  const [sesion, setSesion] = useState(() => recogerSesionDeLaUrl() || leerSesion());
   const [vista, setVista] = useState("selector");
   const [recirEq, setRecirEq] = useState(null);
   const [recirUds, setRecirUds] = useState(null);
@@ -1220,12 +1141,12 @@ export default function SelectorVentilacion() {
     setAch(TIPOS[t].min);
   };
 
-  const conectarSupabase = useCallback(async (url, clave) => {
+  const conectarSupabase = useCallback(async (url, clave, token) => {
     if (!url || !clave) return;
     setCargandoCat(true);
     setErrCat("");
     try {
-      const equipos = await cargarDesdeSupabase(url, clave);
+      const equipos = await cargarDesdeSupabase(url, clave, token);
       if (!equipos.length) throw new Error("La consulta no devolvió ningún equipo utilizable.");
       setCatalogo(equipos);
       setOrigen("supabase");
@@ -1241,9 +1162,15 @@ export default function SelectorVentilacion() {
     }
   }, []);
 
+  /* En cuanto hay sesión se trae el catálogo. Sin ella no se pide nada:
+     el servidor lo rechazaría de todos modos. */
   useEffect(() => {
-    if (SUPABASE_URL && SUPABASE_ANON_KEY) conectarSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
-  }, [conectarSupabase]);
+    if (sesion && SUPABASE_URL && SUPABASE_ANON_KEY) {
+      conectarSupabase(SUPABASE_URL, SUPABASE_ANON_KEY, sesion.access_token);
+    }
+  }, [conectarSupabase, sesion]);
+
+  const salir = () => { borrarSesion(); setSesion(null); setCatalogo([]); setOrigen("demo"); };
 
   const calc = useMemo(() => {
     const area = num(dim.largo) * num(dim.ancho);
@@ -1440,6 +1367,8 @@ export default function SelectorVentilacion() {
     null, 2
   );
 
+  if (!sesion) return <><style>{ESTILOS}</style><PantallaAcceso /></>;
+
   return (
     <div className="vs-root">
       <style>{`
@@ -1619,6 +1548,7 @@ export default function SelectorVentilacion() {
               className={"vs-tab" + (vista === v ? " on" : "")}
               onClick={() => setVista(v)}>{t}</button>
           ))}
+          <button className="vs-tab" onClick={salir} title="Cerrar sesión">Salir</button>
         </div>
       </div>
 
@@ -1764,7 +1694,7 @@ export default function SelectorVentilacion() {
             </div>
 
             <div className="vs-fila" style={{ marginTop: 10 }}>
-              <button className="vs-btn" onClick={() => conectarSupabase(conf.url, conf.clave)}
+              <button className="vs-btn" onClick={() => conectarSupabase(conf.url, conf.clave, sesion?.access_token)}
                 disabled={cargandoCat || !conf.url || !conf.clave}>
                 {cargandoCat ? "Cargando…" : origen === "supabase" ? "Recargar" : "Conectar"}
               </button>
