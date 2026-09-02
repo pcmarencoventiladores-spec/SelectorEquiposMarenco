@@ -1214,8 +1214,6 @@ export default function SelectorVentilacion() {
         const estado = sinCurva ? "indeterminado" : "cumple";
 
         const avisos = [];
-        if (sinCurva && estado === "indeterminado")
-          avisos.push("Sin curva completa: el caudal mostrado es a descarga libre, con el sistema conectado entregará menos");
         if (!sinCurva && eq.tipo === "Axial" && op.q < 0.4 * qMaxCat)
           avisos.push("Punto en zona izquierda de la curva: riesgo de inestabilidad");
         if (!sinCurva && superavit > 40)
@@ -1583,7 +1581,6 @@ export default function SelectorVentilacion() {
                 {interpretando ? "Interpretando…" : "Interpretar con Claude"}
               </button>
             </div>
-            {!IA_ACTIVA && <p className="vs-nota" style={{ padding: "9px 0 0", borderTop: "none" }}>Asistente sin configurar: rellena VITE_IA_ENDPOINT para activarlo.</p>}
             {errIA && <p className="vs-err">{errIA}</p>}
           </Panel>
 
@@ -1742,9 +1739,6 @@ export default function SelectorVentilacion() {
                 <b>{seleccion.superavitCfm >= 0 ? "+" : ""}{fmt(seleccion.superavitCfm)} CFM</b>{" "}
                 ({seleccion.superavit >= 0 ? "+" : ""}{seleccion.superavit.toFixed(0)}%)
                 {seleccion.hpTotal ? ` · ${seleccion.hpTotal.toFixed(2)} HP totales` : ""}
-                {seleccion.sinCurva && (
-                  <em> — calculado sobre descarga libre: con el sistema conectado harán falta más</em>
-                )}
               </p>
             )}
             <dl className="vs-mini">
@@ -1793,18 +1787,7 @@ export default function SelectorVentilacion() {
               <div className="vs-sincurva">
                 <p className="vs-eyebrow">Caudal a descarga libre</p>
                 <p className="vs-sincurva-cifra">{fmt(seleccion.qLibre)} <span>CFM</span></p>
-                <p>
-                  Este equipo solo tiene el caudal a presión cero, así que no hay curva
-                  que cortar con la del sistema y no se puede calcular su punto de operación.
-                  Esa cifra es el techo del equipo: con {fmt(calc.pEst, 2)} in. w.g. de
-                  resistencia entregará menos, cuánto menos no se sabe sin la curva.
-                </p>
-                <p>
-                  Frente a los {fmt(calc.qReq)} CFM de diseño,{" "}
-                  {seleccion.qLibre >= calc.qReq
-                    ? "el techo alcanza, pero hace falta la curva del fabricante para confirmarlo."
-                    : "queda por debajo incluso en el mejor caso: este equipo no sirve."}
-                </p>
+                <p>Este equipo no cuenta con curva, solo con caudal libre.</p>
               </div>
             ) : (
               <Curvas equipo={seleccion} k={calc.k} qReq={calc.qReq} op={seleccion.op} />
