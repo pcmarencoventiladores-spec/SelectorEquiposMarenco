@@ -703,16 +703,6 @@ function PaginaEquipos({ catalogo, candidatos, qReq, elegido, onElegir, onDemo, 
             {t === "todos" ? "Todos" : t}
           </button>
         ))}
-        <span style={{ flex: 1 }} />
-        <button className="vs-btn ghost" onClick={() => descargarCatalogo(catalogo)}>
-          Descargar JSON
-        </button>
-        <button className="vs-btn ghost" onClick={() => descargarSQL(catalogo)}>
-          Exportar a SQL
-        </button>
-        {!esDemo && (
-          <button className="vs-btn ghost" onClick={onDemo}>Volver al integrado</button>
-        )}
       </div>
 
       {lista.length === 0 ? (
@@ -1655,7 +1645,7 @@ export default function SelectorVentilacion() {
           </Panel>
 
           <Panel indice="05" titulo="Catálogo"
-            nota="El catálogo viene incluido en la aplicación. Conectar a Supabase solo hace falta para traer cambios recientes o las fotos y fichas de los equipos.">
+            nota="El catálogo se descarga de Supabase al iniciar sesión. Usa Recargar si acabas de cambiar algo en la base.">
             <p className="vs-cat">
               <span className={"vs-punto " + (cargandoCat ? "cargando"
                 : origen === "supabase" ? "vivo" : "inerte")} />
@@ -1690,21 +1680,6 @@ export default function SelectorVentilacion() {
               </button>
             </div>
             {errCat && <p className="vs-err">{errCat}</p>}
-
-            <div className="vs-fila" style={{ marginTop: 10 }}>
-              <button className="vs-btn ghost" onClick={() => setImportOpen(!importOpen)}>
-                {importOpen ? "Cerrar" : "Cargar JSON"}
-              </button>
-              <button className="vs-btn ghost" onClick={() => descargarSQL(catalogo)}>
-                Exportar a SQL
-              </button>
-              {origen !== "demo" && (
-                <button className="vs-btn ghost"
-                  onClick={() => { setCatalogo(CATALOGO_DEMO); setOrigen("demo"); setElegido(null); }}>
-                  Volver al integrado
-                </button>
-              )}
-            </div>
             {importOpen && (
               <div style={{ marginTop: 12 }}>
                 <span className="vs-lab" style={{ marginBottom: 4 }}>
