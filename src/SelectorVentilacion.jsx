@@ -775,7 +775,7 @@ function PaginaEquipos({ catalogo, candidatos, qReq, elegido, onElegir, onDemo, 
                     </button>
                   )}
                   {c.fichaUrl ? (
-                    <a className="vs-btn ghost" href={c.fichaUrl} target="_blank" rel="noreferrer">
+                    <a className="vs-btn naranja" href={c.fichaUrl} target="_blank" rel="noreferrer">
                       Catálogo
                     </a>
                   ) : (
@@ -1565,6 +1565,7 @@ export default function SelectorVentilacion() {
           border:1px solid var(--ink);background:var(--ink);color:#fff}
         .vs-btn:disabled{opacity:.45;cursor:default}
         .vs-btn.ghost{background:transparent;color:var(--ink)}
+        .vs-btn.naranja{background:var(--air);border-color:var(--air);color:var(--ink)}
 
         .vs-readout{background:var(--ink);color:#fff;border-radius:4px;padding:18px;margin-bottom:16px}
         .vs-readout .vs-eyebrow{color:#ffab5c}
@@ -1625,8 +1626,7 @@ export default function SelectorVentilacion() {
         .vs-memoria{white-space:pre-wrap;font-size:13.5px;line-height:1.62;color:var(--graf)}
         .vs-vacio{font-size:13px;color:var(--mudo);margin:0}
         .vs-fila{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-        .vs-cat-elegidos{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;
-          padding-bottom:14px;border-bottom:1px dashed var(--rule)}
+        .vs-cat-elegidos{display:flex;flex-direction:column;gap:8px}
         .vs-cat-fila{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
         .vs-cat-fila .vs-lab{min-width:74px}
         .vs-cat-fila .vs-btn{font-size:12px;padding:6px 11px}
@@ -1813,79 +1813,27 @@ export default function SelectorVentilacion() {
             </div>
           </Panel>
 
-          <Panel indice="05" titulo="Catálogo"
-            nota="El catálogo se descarga de Supabase al iniciar sesión. Usa Recargar si acabas de cambiar algo en la base.">
-            {(selExt || selIny) && (
-              <div className="vs-cat-elegidos">
-                {[["Extracción", selExt], ["Inyección", selIny]].map(([rot, eq]) => (
-                  <div key={rot} className="vs-cat-fila">
-                    <span className="vs-lab">{rot}</span>
-                    {!eq ? (
-                      <span className="vs-sin-pdf">sin equipo elegido</span>
-                    ) : eq.fichaUrl ? (
-                      <a className="vs-btn ghost" href={eq.fichaUrl}
-                        target="_blank" rel="noreferrer">
-                        Catálogo {eq.linea || eq.modelo}
-                      </a>
-                    ) : (
-                      <span className="vs-sin-pdf">
-                        {eq.linea || eq.modelo} · sin catálogo cargado
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <p className="vs-cat">
-              <span className={"vs-punto " + (cargandoCat ? "cargando"
-                : origen === "supabase" ? "vivo" : "inerte")} />
-              {cargandoCat
-                ? "Consultando Supabase…"
-                : `${catalogo.length} equipos · ${
-                    origen === "supabase" ? "conectado a Supabase"
-                    : origen === "json" ? "importados por JSON"
-                    : "catálogo integrado"}`}
-            </p>
-
-            <div className="vs-grid2" style={{ marginTop: 11 }}>
-              <label className="vs-campo" style={{ gridColumn: "1 / -1" }}>
-                <span className="vs-lab">URL del proyecto</span>
-                <input type="text" value={conf.url} placeholder="https://xxxx.supabase.co"
-                  onChange={(e) => setConf({ ...conf, url: e.target.value })} />
-              </label>
-              <label className="vs-campo" style={{ gridColumn: "1 / -1" }}>
-                <span className="vs-lab">Clave anon<em>pública</em></span>
-                <input type="text" value={conf.clave} placeholder="eyJhbGciOi…"
-                  onChange={(e) => setConf({ ...conf, clave: e.target.value })} />
-              </label>
-            </div>
-
-            <div className="vs-fila" style={{ marginTop: 10 }}>
-              <button className="vs-btn" onClick={() => conectarSupabase(conf.url, conf.clave, sesion?.access_token)}
-                disabled={cargandoCat || !conf.url || !conf.clave}>
-                {cargandoCat ? "Cargando…" : origen === "supabase" ? "Recargar" : "Conectar"}
-              </button>
-              <button className="vs-btn ghost" onClick={() => setVista("equipos")}>
-                Ver y escoger equipos
-              </button>
+          <Panel indice="05" titulo="Catálogo">
+            <div className="vs-cat-elegidos">
+              {[["Extracción", selExt], ["Inyección", selIny]].map(([rot, eq]) => (
+                <div key={rot} className="vs-cat-fila">
+                  <span className="vs-lab">{rot}</span>
+                  {!eq ? (
+                    <span className="vs-sin-pdf">sin equipo elegido</span>
+                  ) : eq.fichaUrl ? (
+                    <a className="vs-btn naranja" href={eq.fichaUrl}
+                      target="_blank" rel="noreferrer">
+                      Catálogo {eq.linea || eq.modelo}
+                    </a>
+                  ) : (
+                    <span className="vs-sin-pdf">
+                      {eq.linea || eq.modelo} · sin catálogo cargado
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
             {errCat && <p className="vs-err">{errCat}</p>}
-            {importOpen && (
-              <div style={{ marginTop: 12 }}>
-                <span className="vs-lab" style={{ marginBottom: 4 }}>
-                  JSON · curva como [CFM, in. w.g., HP] · foto y fichaUrl son opcionales
-                </span>
-                <textarea rows={7} value={jsonTexto} placeholder={plantilla}
-                  onChange={(e) => setJsonTexto(e.target.value)}
-                  style={{ fontFamily: "var(--mono)", fontSize: 11.5 }} />
-                <div className="vs-fila" style={{ marginTop: 9 }}>
-                  <button className="vs-btn" onClick={importar} disabled={!jsonTexto.trim()}>Cargar</button>
-                  <button className="vs-btn ghost" onClick={() => setJsonTexto(plantilla)}>Ver plantilla</button>
-                </div>
-                {errImport && <p className="vs-err">{errImport}</p>}
-              </div>
-            )}
           </Panel>
         </div>
 
