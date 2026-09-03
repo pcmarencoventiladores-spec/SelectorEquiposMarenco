@@ -1151,17 +1151,35 @@ function PaginaRecirculacion({ catalogo, ancho, largo, hombro, cumbrera, onAncho
           </dl>
         </div>
 
-        <Panel indice="R4" titulo="Vista en planta">
+        <Panel indice="R4" titulo="Catálogo">
+          <div className="vs-cat-elegidos">
+            <div className="vs-cat-fila">
+              <span className="vs-lab">Recirculador</span>
+              {eq.fichaUrl ? (
+                <a className="vs-btn naranja" href={eq.fichaUrl}
+                  target="_blank" rel="noreferrer">
+                  Catálogo {eq.linea || eq.modelo}
+                </a>
+              ) : (
+                <span className="vs-sin-pdf">
+                  {eq.linea || eq.modelo} · sin catálogo cargado
+                </span>
+              )}
+            </div>
+          </div>
+        </Panel>
+
+        <Panel indice="R5" titulo="Vista en planta">
           <PlantaNave largo={largo} ancho={ancho} filas={filas} columnas={columnas}
             ladoMin={ladoMin} ladoMax={ladoMax} />
         </Panel>
 
-        <Panel indice="R5" titulo="Fachada longitudinal">
+        <Panel indice="R6" titulo="Fachada longitudinal">
           <EsquemaNave modo="frontal" span={largo} hombro={hombro} cumbrera={cumbrera}
             ladoMin={ladoMin} ladoMax={ladoMax} n={columnas} />
         </Panel>
 
-        <Panel indice="R6" titulo="Sección transversal">
+        <Panel indice="R7" titulo="Sección transversal">
           <EsquemaNave modo="lateral" span={ancho} hombro={hombro} cumbrera={cumbrera}
             ladoMin={ladoMin} ladoMax={ladoMax} n={filas} />
           <div className="vs-aviso" style={{ background: "var(--airsoft)", borderColor: "var(--air)", color: "var(--air-txt)" }}>
