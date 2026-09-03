@@ -670,14 +670,23 @@ ${puntos}
 function PaginaEquipos({ catalogo, candidatos, qReq, elegido, onElegir, onDemo, esDemo }) {
   const [familia, setFamilia] = useState("todas");
   const [filtro, setFiltro] = useState("todos");
+  const [linea, setLinea] = useState("todas");
 
   const familias = Array.from(new Set(catalogo.map((e) => e.categoria).filter(Boolean)));
   const tipos = ["todos", ...Array.from(new Set(catalogo.map((e) => e.tipo).filter(Boolean)))];
-  const lista = candidatos.filter(
+
+  /* Las líneas se calculan sobre lo que dejan pasar los otros dos filtros,
+     así el desplegable nunca ofrece una opción que vaciaría la vista. */
+  const previa = candidatos.filter(
     (c) =>
       (familia === "todas" || c.categoria === familia) &&
       (filtro === "todos" || c.tipo === filtro)
   );
+  const lineas = Array.from(new Set(previa.map((c) => c.linea).filter(Boolean))).sort();
+  const lista =
+    linea === "todas" || !lineas.includes(linea)
+      ? previa
+      : previa.filter((c) => c.linea === linea);
 
   return (
     <div className="vs-equipos">
@@ -703,6 +712,19 @@ function PaginaEquipos({ catalogo, candidatos, qReq, elegido, onElegir, onDemo, 
             {t === "todos" ? "Todos" : t}
           </button>
         ))}
+        <span style={{ flex: 1 }} />
+        <label className="vs-campo" style={{ maxWidth: 160 }}>
+          <span className="vs-lab">Línea</span>
+          <select value={lineas.includes(linea) ? linea : "todas"}
+            onChange={(e) => setLinea(e.target.value)}>
+            <option value="todas">Todas ({previa.length})</option>
+            {lineas.map((l) => (
+              <option key={l} value={l}>
+                {l} ({previa.filter((c) => c.linea === l).length})
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {lista.length === 0 ? (
