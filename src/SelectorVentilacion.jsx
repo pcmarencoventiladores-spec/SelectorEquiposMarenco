@@ -752,13 +752,14 @@ function PaginaEquipos({ catalogo, candidatos, qReq, elegido, onElegir, onDemo, 
                       {c.idx === elegido ? "En uso" : "Usar en el selector"}
                     </button>
                   )}
-                  <button className="vs-btn ghost" onClick={() => descargarFicha(c, c, qReq)}>
-                    Ficha
-                  </button>
-                  {c.fichaUrl && (
+                  {c.fichaUrl ? (
                     <a className="vs-btn ghost" href={c.fichaUrl} target="_blank" rel="noreferrer">
                       Catálogo
                     </a>
+                  ) : (
+                    <span className="vs-sin-pdf" title="Este equipo no tiene catálogo cargado">
+                      Sin catálogo
+                    </span>
                   )}
                 </div>
               </div>
@@ -885,6 +886,91 @@ function EsquemaNave({ modo, span: spanNave, hombro = 6, cumbrera = 8.5,
   );
 }
 
+/* Vista en planta: la malla de equipos sobre la superficie del recinto.
+   Cada unidad cubre un cuadrado cuyo lado es su alcance, así que aquí se
+   ve directamente si la distribución deja huecos o si los solapes son
+   excesivos, cosa que en las vistas de alzado no se aprecia. */
+function PlantaNave({ largo, ancho, filas, columnas, ladoMin, ladoMax }) {
+  const VW = 640, VH = 420;
+  const M = { l: 54, r: 26, t: 26, b: 52 };
+  const L = Math.max(Number(largo) || 1, 1);
+  const A = Math.max(Number(ancho) || 1, 1);
+  const f = Math.max(1, Math.round(filas)), c = Math.max(1, Math.round(columnas));
+
+  /* Encuadre fijo: no depende del reparto, así el dibujo conserva el mismo
+     tamaño al mover filas y columnas y se pueden comparar distribuciones.
+     El peor caso es un equipo pegado al borde, cuyo alcance sobresale media
+     anchura de cuadrado: por eso se suma el alcance máximo entero. */
+  const spanL = (L + ladoMax) * 1.02;
+  const spanA = (A + ladoMax) * 1.02;
+  const esc = Math.min((VW - M.l - M.r) / spanL, (VH - M.t - M.b) / spanA);
+  const cx = M.l + (VW - M.l - M.r) / 2;
+  const cy = M.t + (VH - M.t - M.b) / 2;
+  const X = (m) => cx + m * esc;
+  const Y = (m) => cy + m * esc;
+
+  const pos = [];
+  for (let i = 0; i < f; i++)
+    for (let j = 0; j < c; j++)
+      pos.push([-L / 2 + (L * (j + 0.5)) / c, -A / 2 + (A * (i + 0.5)) / f]);
+
+  const cuadro = (px, py, lado, clase, k) => (
+    <rect key={clase + k} className={clase}
+      x={X(px - lado / 2)} y={Y(py - lado / 2)}
+      width={lado * esc} height={lado * esc} />
+  );
+
+  return (
+    <svg viewBox={`0 0 ${VW} ${VH}`} className="vs-nave" role="img"
+      aria-label={`Vista en planta con ${f * c} equipos en ${f} filas por ${c} columnas`}>
+      <g className="vs-cota">
+        <text x="6" y="15">
+          planta {largo} × {ancho} m · {f * c} {f * c === 1 ? "equipo" : "equipos"} · {f} × {c}
+        </text>
+      </g>
+
+      {pos.map(([px, py], k) => cuadro(px, py, ladoMax, "vs-zona-max", k))}
+      {pos.map(([px, py], k) => cuadro(px, py, ladoMin, "vs-zona-min", k))}
+
+      <rect className="vs-fachada" x={X(-L / 2)} y={Y(-A / 2)}
+        width={L * esc} height={A * esc} />
+
+      {/* Retícula de reparto: marca el tramo que atiende cada equipo */}
+      {Array.from({ length: c - 1 }, (_, j) => (
+        <line key={"v" + j} className="vs-iso-eje"
+          x1={X(-L / 2 + (L * (j + 1)) / c)} x2={X(-L / 2 + (L * (j + 1)) / c)}
+          y1={Y(-A / 2)} y2={Y(A / 2)} />
+      ))}
+      {Array.from({ length: f - 1 }, (_, i) => (
+        <line key={"h" + i} className="vs-iso-eje"
+          x1={X(-L / 2)} x2={X(L / 2)}
+          y1={Y(-A / 2 + (A * (i + 1)) / f)} y2={Y(-A / 2 + (A * (i + 1)) / f)} />
+      ))}
+
+      {pos.map(([px, py], k) => (
+        <g key={"eq" + k}>
+          <circle cx={X(px)} cy={Y(py)} r="9" className="vs-planta-halo" />
+          <circle cx={X(px)} cy={Y(py)} r="3.5" className="vs-equipo" />
+        </g>
+      ))}
+
+      <g className="vs-cota">
+        <line x1={X(-L / 2)} y1={Y(A / 2) + 16} x2={X(L / 2)} y2={Y(A / 2) + 16} />
+        <line x1={X(-L / 2)} y1={Y(A / 2) + 12} x2={X(-L / 2)} y2={Y(A / 2) + 20} />
+        <line x1={X(L / 2)} y1={Y(A / 2) + 12} x2={X(L / 2)} y2={Y(A / 2) + 20} />
+        <text x={cx} y={Y(A / 2) + 16} textAnchor="middle" dominantBaseline="middle"
+          className="vs-cota-halo">{largo} m</text>
+
+        <line x1={X(-L / 2) - 16} y1={Y(-A / 2)} x2={X(-L / 2) - 16} y2={Y(A / 2)} />
+        <line x1={X(-L / 2) - 20} y1={Y(-A / 2)} x2={X(-L / 2) - 12} y2={Y(-A / 2)} />
+        <line x1={X(-L / 2) - 20} y1={Y(A / 2)} x2={X(-L / 2) - 12} y2={Y(A / 2)} />
+        <text x={X(-L / 2) - 16} y={cy} textAnchor="middle" dominantBaseline="middle"
+          className="vs-cota-halo">{ancho} m</text>
+      </g>
+    </svg>
+  );
+}
+
 function PaginaRecirculacion({ catalogo, ancho, largo, hombro, cumbrera, onAncho, onLargo,
                               elegido, onElegir, unidades, onUnidades,
                               filasSel, onFilas }) {
@@ -985,15 +1071,6 @@ function PaginaRecirculacion({ catalogo, ancho, largo, hombro, cumbrera, onAncho
               </select>
             </label>
           </div>
-
-          {(n !== nAuto || filas !== auto.filas) && (
-            <div className="vs-fila" style={{ marginTop: 9 }}>
-              <button className="vs-btn ghost"
-                onClick={() => { onUnidades(null); onFilas(null); }}>
-                Volver al calculado ({nAuto} en {auto.filas} × {auto.columnas})
-              </button>
-            </div>
-          )}
         </Panel>
 
         <Panel indice="R3" titulo="Alcance por unidad"
@@ -1052,12 +1129,17 @@ function PaginaRecirculacion({ catalogo, ancho, largo, hombro, cumbrera, onAncho
           </dl>
         </div>
 
-        <Panel indice="R4" titulo="Fachada longitudinal">
+        <Panel indice="R4" titulo="Vista en planta">
+          <PlantaNave largo={largo} ancho={ancho} filas={filas} columnas={columnas}
+            ladoMin={ladoMin} ladoMax={ladoMax} />
+        </Panel>
+
+        <Panel indice="R5" titulo="Fachada longitudinal">
           <EsquemaNave modo="frontal" span={largo} hombro={hombro} cumbrera={cumbrera}
             ladoMin={ladoMin} ladoMax={ladoMax} n={columnas} />
         </Panel>
 
-        <Panel indice="R5" titulo="Sección transversal">
+        <Panel indice="R6" titulo="Sección transversal">
           <EsquemaNave modo="lateral" span={ancho} hombro={hombro} cumbrera={cumbrera}
             ladoMin={ladoMin} ladoMax={ladoMax} n={filas} />
           <div className="vs-aviso" style={{ background: "var(--airsoft)", borderColor: "var(--air)", color: "var(--air-txt)" }}>
@@ -1099,7 +1181,12 @@ export default function SelectorVentilacion() {
   const [jsonTexto, setJsonTexto] = useState("");
   const [errImport, setErrImport] = useState("");
 
-  const [elegido, setElegido] = useState(null);
+  const [elegido, setElegido] = useState(null);        // extracción
+  const [elegidoIny, setElegidoIny] = useState(null);  // inyección
+  const [manualExt, setManualExt] = useState(null);
+  const [manualIny, setManualIny] = useState(null);
+  const [servicio, setServicio] = useState("extraccion");
+  const [lineaFiltro, setLineaFiltro] = useState("todas");
 
   const [descripcion, setDescripcion] = useState("");
   const [interpretando, setInterpretando] = useState(false);
@@ -1225,16 +1312,55 @@ export default function SelectorVentilacion() {
       ppmLargo, ppmCara, qReq, pEst, k, candidatos };
   }, [dim, ach, presion, catalogo]);
 
+  /* Un equipo sirve para extracción si su servicio lo dice, o si es mixto.
+     Los que no declaran servicio entran en ambas listas: mejor ofrecerlos
+     que esconderlos por un dato que falta en el catálogo. */
+  const sirvePara = (c, servicio) => {
+    const s = String(c.servicio || "");
+    if (!s) return true;
+    return servicio === "extraccion"
+      ? /Extractor/i.test(s)
+      : /Inyector/i.test(s);
+  };
+
   const elegibles = calc.candidatos.filter((c) => !c.esRecirculador);
-  const seleccion = elegibles.find((c) => c.idx === elegido) || elegibles[0] || null;
+  const listaExt = elegibles.filter((c) => sirvePara(c, "extraccion"));
+  const listaIny = elegibles.filter((c) => sirvePara(c, "inyeccion"));
+  const listaServicio = servicio === "extraccion" ? listaExt : listaIny;
+  /* Las líneas se sacan de lo que hay en el servicio activo: si un filtro
+     no tiene equipos que ofrecer, mejor que ni aparezca. */
+  const lineas = Array.from(new Set(listaServicio.map((c) => c.linea).filter(Boolean))).sort();
+  const lista =
+    lineaFiltro === "todas" || !lineas.includes(lineaFiltro)
+      ? listaServicio
+      : listaServicio.filter((c) => c.linea === lineaFiltro);
+
+  const selExt = listaExt.find((c) => c.idx === elegido) || listaExt[0] || null;
+  const selIny = listaIny.find((c) => c.idx === elegidoIny) || null;
+  const seleccion = servicio === "extraccion" ? selExt : selIny || selExt;
+
+  /* Unidades por servicio. El valor propuesto es el que cubre el caudal de
+     diseño; se puede cambiar a mano para dejar la nave en presión positiva
+     o negativa a propósito. */
+  const udsExt = selExt ? Math.max(1, Math.round(manualExt ?? selExt.unidades)) : 0;
+  const udsIny = selIny ? Math.max(1, Math.round(manualIny ?? selIny.unidades)) : 0;
+  const flujoExt = selExt ? udsExt * selExt.qRef : 0;
+  const flujoIny = selIny ? udsIny * selIny.qRef : 0;
+  const balance = flujoExt > 0 && selIny ? (flujoIny / flujoExt - 1) * 100 : null;
+
+  /* Cuánto se pasa o se queda corta la extracción frente al caudal que
+     pide la nave. Es otra cosa que el balance: aquí se compara contra el
+     diseño, no contra la inyección. */
+  const difExt = selExt ? flujoExt - calc.qReq : null;
+  const pctExt = selExt && calc.qReq > 0 ? (flujoExt / calc.qReq - 1) * 100 : null;
 
   /* Cuántas unidades hacen falta para llegar al caudal de diseño.
      Vale para extractores de pared, cada uno con su propia abertura:
      al ser independientes, los caudales se suman. Si compartieran un
      mismo ducto no sería así, porque cada equipo añadido sube la
      resistencia que ven los demás. */
-  const requeridos = seleccion ? seleccion.unidades : null;
-  const instalado = seleccion ? seleccion.instalado : 0;
+  const requeridos = servicio === "extraccion" ? udsExt : udsIny;
+  const instalado = servicio === "extraccion" ? flujoExt : flujoIny;
 
   const interpretar = async () => {
     if (!descripcion.trim()) return;
@@ -1293,6 +1419,16 @@ export default function SelectorVentilacion() {
           : `${seleccion.op.q.toFixed(0)} CFM a ${seleccion.op.p.toFixed(3)} in. w.g.`,
         potencia_nominal_hp: +seleccion.potencia.toFixed(2),
         holgura_pct: +seleccion.holgura.toFixed(1),
+        servicio_del_equipo: servicio === "extraccion" ? "extracción" : "inyección",
+        extraccion: selExt
+          ? `${udsExt} × ${selExt.modelo} = ${flujoExt.toFixed(0)} CFM`
+          : "sin definir",
+        inyeccion: selIny
+          ? `${udsIny} × ${selIny.modelo} = ${flujoIny.toFixed(0)} CFM`
+          : "sin definir",
+        extraccion_sobre_diseno_cfm: difExt == null ? null : +difExt.toFixed(0),
+        extraccion_sobre_diseno_pct: pctExt == null ? null : +pctExt.toFixed(1),
+        balance_pct: balance == null ? null : +balance.toFixed(1),
         unidades_exactas: +seleccion.exactas.toFixed(3),
         unidades_requeridas: requeridos,
         caudal_instalado_cfm: +instalado.toFixed(0),
@@ -1302,7 +1438,7 @@ export default function SelectorVentilacion() {
         avisos: seleccion.avisos,
       };
       const texto = await llamarClaude(
-        "Eres ingeniero de ventilación y redactas la memoria de cálculo del proyecto en español técnico. La geometría de la nave va en metros y el aire y el equipo en unidades de catálogo: CFM, in. w.g., pulgadas, FPM y HP. Usa cada magnitud en la unidad en que te llega y no conviertas entre sistemas. Trabajas exclusivamente con las cifras que recibes: no recalcules, no estimes valores que no estén en los datos y no cites normas por número de artículo. Estructura: geometría y volumen de la nave, caudal de diseño y renovaciones aplicadas, presión estática de diseño, secciones transversales y velocidades resultantes, punto de operación del equipo, cuántas unidades hacen falta y el caudal instalado que resulta, y observaciones. Tres a cinco párrafos, sin viñetas, sin encabezados, sin preámbulo.",
+        "Eres ingeniero de ventilación y redactas la memoria de cálculo del proyecto en español técnico. La geometría de la nave va en metros y el aire y el equipo en unidades de catálogo: CFM, in. w.g., pulgadas, FPM y HP. Usa cada magnitud en la unidad en que te llega y no conviertas entre sistemas. Trabajas exclusivamente con las cifras que recibes: no recalcules, no estimes valores que no estén en los datos y no cites normas por número de artículo. Estructura: geometría y volumen de la nave, caudal de diseño y renovaciones aplicadas, presión estática de diseño, secciones transversales y velocidades resultantes, punto de operación del equipo, cuántas unidades hacen falta y el caudal instalado que resulta, el balance entre inyección y extracción con la presión que deja en la nave, y observaciones. Tres a cinco párrafos, sin viñetas, sin encabezados, sin preámbulo.",
         "Datos del cálculo:\n" + JSON.stringify(datos, null, 2)
       );
       setMemoria(texto);
@@ -1388,6 +1524,7 @@ export default function SelectorVentilacion() {
         .vs-iso-gable{fill:#f4f4f9;stroke:var(--ink);stroke-width:1.4;stroke-linejoin:round}
         .vs-iso-techo-a{fill:#ffe3c4;stroke:var(--ink);stroke-width:1.4;stroke-linejoin:round}
         .vs-iso-techo-b{fill:#ffcd9f;stroke:var(--ink);stroke-width:1.4;stroke-linejoin:round}
+        .vs-planta-halo{fill:none;stroke:var(--ink);stroke-width:1.2}
         .vs-zona-max{fill:#ffe3c4;opacity:.75}
         .vs-zona-min{fill:#ffc78e;opacity:.85}
         .vs-fachada{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round}
@@ -1412,7 +1549,9 @@ export default function SelectorVentilacion() {
         .vs-cifra{display:flex;align-items:baseline;gap:9px;font-family:var(--mono);margin:2px 0 14px;flex-wrap:wrap}
         .vs-cifra b{font-size:44px;font-weight:600;letter-spacing:-.03em;line-height:1}
         .vs-cifra span{font-size:13px;color:#a9ace0}
-        .vs-req-eq{margin:-6px 0 14px;font-family:var(--mono);font-size:12px;color:#a9ace0;line-height:1.5}
+        .vs-balance{margin:12px 0 0;font-size:12.5px;color:#a9ace0;line-height:1.5}
+        .vs-balance b{color:#fff;font-family:var(--mono)}
+        .vs-req-eq{margin:-6px 0 10px;font-family:var(--mono);font-size:12px;color:#a9ace0;line-height:1.5}
         .vs-req-eq b{color:#fff;font-size:15px}
         .vs-req-eq em{font-style:normal;color:#ffab5c}
         .vs-mini{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#414590;border:1px solid #414590;border-radius:3px}
@@ -1511,15 +1650,13 @@ export default function SelectorVentilacion() {
         .vs-card-op b{color:var(--ink);font-family:var(--mono)}
         .vs-card-acc{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
         .vs-card-acc .vs-btn{font-size:12px;padding:7px 11px}
+        .vs-sin-pdf{font-family:var(--mono);font-size:10.5px;color:var(--mudo);
+          align-self:center;padding:0 4px}
         a.vs-btn{text-decoration:none;display:inline-block}
       `}</style>
 
       <div className="vs-head">
         <h1>Selector de ventilación general</h1>
-        <p>
-          Los cálculos corren localmente y son deterministas. La IA solo interpreta la
-          descripción de la nave y redacta la memoria sobre resultados ya calculados.
-        </p>
         <div className="vs-tabs" role="tablist">
           {[["selector", "Selector"], ["recirculacion", "Recirculación"], ["equipos", "Equipos"]].map(([v, t]) => (
             <button key={v} role="tab" aria-selected={vista === v}
@@ -1554,7 +1691,12 @@ export default function SelectorVentilacion() {
           elegido={seleccion?.idx ?? null}
           esDemo={origen === "demo"}
           onDemo={() => { setCatalogo(CATALOGO_DEMO); setOrigen("demo"); setElegido(null); }}
-          onElegir={(i) => { setElegido(i); setMemoria(""); setVista("selector"); }}
+          onElegir={(i) => {
+            if (servicio === "extraccion") { setElegido(i); setManualExt(null); }
+            else { setElegidoIny(i); setManualIny(null); }
+            setMemoria("");
+            setVista("selector");
+          }}
         />
       ) : (
 
@@ -1706,14 +1848,29 @@ export default function SelectorVentilacion() {
               <b>{fmt(calc.qReq)}</b>
               <span>CFM</span>
             </div>
-            {seleccion && requeridos && (
+            {selExt && (
               <p className="vs-req-eq">
-                <b>{requeridos}</b> {requeridos === 1 ? "equipo" : "equipos"}{" "}
-                <em>({seleccion.exactas.toFixed(2)} exactos)</em> {seleccion.modelo} · {fmt(seleccion.qRef)} CFM cada uno ·{" "}
-                {fmt(instalado)} CFM instalados ·{" "}
-                <b>{seleccion.superavitCfm >= 0 ? "+" : ""}{fmt(seleccion.superavitCfm)} CFM</b>{" "}
-                ({seleccion.superavit >= 0 ? "+" : ""}{seleccion.superavit.toFixed(0)}%)
-                {seleccion.hpTotal ? ` · ${seleccion.hpTotal.toFixed(2)} HP totales` : ""}
+                <b>Extracción</b> · {udsExt} {udsExt === 1 ? "equipo" : "equipos"}{" "}
+                {selExt.modelo} · {fmt(selExt.qRef)} CFM cada uno ·{" "}
+                <b>{fmt(flujoExt)} CFM</b>
+                {pctExt != null && (
+                  <> · {difExt >= 0 ? "+" : ""}{fmt(difExt)} CFM{" "}
+                  ({pctExt >= 0 ? "+" : ""}{pctExt.toFixed(1)} %) sobre el diseño</>
+                )}
+                {selExt.hp ? ` · ${(udsExt * selExt.hp).toFixed(2)} HP` : ""}
+              </p>
+            )}
+            {selIny ? (
+              <p className="vs-req-eq">
+                <b>Inyección</b> · {udsIny} {udsIny === 1 ? "equipo" : "equipos"}{" "}
+                {selIny.modelo} · {fmt(selIny.qRef)} CFM cada uno ·{" "}
+                <b>{fmt(flujoIny)} CFM</b>
+                {selIny.hp ? ` · ${(udsIny * selIny.hp).toFixed(2)} HP` : ""}
+              </p>
+            ) : (
+              <p className="vs-req-eq">
+                <em>Sin equipo de inyección definido. Elígelo en la sección
+                Equipos elegibles, en la etiqueta Inyección.</em>
               </p>
             )}
             <dl className="vs-mini">
@@ -1747,11 +1904,28 @@ export default function SelectorVentilacion() {
               </div>
               <div>
                 <dt>Equipos</dt>
-                <dd>{seleccion
-                  ? `${seleccion.exactas.toFixed(2)} → ${requeridos} ud`
-                  : "—"}</dd>
+                <dd>{selExt ? `${selExt.exactas.toFixed(2)} → ${udsExt} ud` : "—"}</dd>
+              </div>
+              <div>
+                <dt>Balance</dt>
+                <dd style={balance == null ? undefined
+                  : { color: Math.abs(balance) <= 10 ? "#7fd3d8" : "#ffab5c" }}>
+                  {balance == null ? "—"
+                    : `${balance >= 0 ? "+" : ""}${balance.toFixed(1)} %`}
+                </dd>
               </div>
             </dl>
+            {balance != null && (
+              <p className="vs-balance">
+                {fmt(flujoIny)} CFM inyectados frente a {fmt(flujoExt)} extraídos:{" "}
+                <b>{balance >= 0 ? "+" : ""}{balance.toFixed(1)} %</b>.{" "}
+                {Math.abs(balance) <= 5
+                  ? "Prácticamente equilibrada."
+                  : balance > 0
+                  ? "La nave queda en presión positiva: el aire sale por puertas y huecos."
+                  : "La nave queda en presión negativa: entra aire sin filtrar por puertas y huecos."}
+              </p>
+            )}
           </div>
 
           <Panel indice="06"
@@ -1772,8 +1946,37 @@ export default function SelectorVentilacion() {
             ))}
           </Panel>
 
-          <Panel indice="07" titulo="Equipos elegibles"
+          <Panel indice="07" titulo={`Equipos elegibles · ${servicio === "extraccion" ? "extracción" : "inyección"}`}
             nota="Ordenados por menos unidades, luego menos potencia total y menos sobrante. La columna en CFM es la diferencia entre el caudal instalado y el de diseño.">
+            <div className="vs-filtros" style={{ marginBottom: 12 }}>
+              {[["extraccion", "Extracción"], ["inyeccion", "Inyección"]].map(([v, t]) => (
+                <button key={v} className={"vs-chip" + (servicio === v ? " on" : "")}
+                  onClick={() => setServicio(v)} aria-pressed={servicio === v}>
+                  {t}
+                </button>
+              ))}
+              <span style={{ flex: 1 }} />
+              <label className="vs-campo" style={{ maxWidth: 150 }}>
+                <span className="vs-lab">Línea</span>
+                <select value={lineaFiltro} onChange={(e) => setLineaFiltro(e.target.value)}>
+                  <option value="todas">Todas ({listaServicio.length})</option>
+                  {lineas.map((l) => (
+                    <option key={l} value={l}>
+                      {l} ({listaServicio.filter((c) => c.linea === l).length})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="vs-campo" style={{ maxWidth: 110 }}>
+                <span className="vs-lab">Unidades</span>
+                <input type="number" min={1} step={1}
+                  value={servicio === "extraccion" ? udsExt : udsIny}
+                  onChange={(e) => {
+                    const v = e.target.value === "" ? null : Number(e.target.value);
+                    servicio === "extraccion" ? setManualExt(v) : setManualIny(v);
+                  }} />
+              </label>
+            </div>
             <div className="vs-scroll">
               <table className="vs-tabla">
                 <thead>
@@ -1787,9 +1990,14 @@ export default function SelectorVentilacion() {
                   </tr>
                 </thead>
                 <tbody>
-                  {elegibles.map((c) => (
-                    <tr key={c.idx} onClick={() => setElegido(c.idx)}
-                      className={(c.idx === seleccion?.idx ? "on " : "") + (c.estado === "insuficiente" ? "no" : "")}>
+                  {lista.map((c) => (
+                    <tr key={c.idx}
+                      onClick={() => {
+                        if (servicio === "extraccion") { setElegido(c.idx); setManualExt(null); }
+                        else { setElegidoIny(c.idx); setManualIny(null); }
+                      }}
+                      className={(c.idx === (servicio === "extraccion" ? selExt?.idx : selIny?.idx) ? "on " : "")
+                        + (c.estado === "insuficiente" ? "no" : "")}>
                       <td>
                         <span className="vs-modelo">{c.modelo}</span>
                         <span className="vs-sub">
