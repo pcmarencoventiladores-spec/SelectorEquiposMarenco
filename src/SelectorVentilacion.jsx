@@ -1565,7 +1565,8 @@ export default function SelectorVentilacion() {
           border:1px solid var(--ink);background:var(--ink);color:#fff}
         .vs-btn:disabled{opacity:.45;cursor:default}
         .vs-btn.ghost{background:transparent;color:var(--ink)}
-        .vs-btn.naranja{background:var(--air);border-color:var(--air);color:var(--ink)}
+        .vs-btn.naranja{background:var(--airsoft);border:1px solid var(--air);
+          color:var(--air-txt);border-radius:20px;font-weight:600;font-size:12px;padding:6px 14px}
 
         .vs-readout{background:var(--ink);color:#fff;border-radius:4px;padding:18px;margin-bottom:16px}
         .vs-readout .vs-eyebrow{color:#ffab5c}
@@ -1677,6 +1678,7 @@ export default function SelectorVentilacion() {
         .vs-card-op b{color:var(--ink);font-family:var(--mono)}
         .vs-card-acc{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
         .vs-card-acc .vs-btn{font-size:12px;padding:7px 11px}
+        .vs-card-acc .vs-btn.naranja{padding:6px 14px}
         .vs-sin-pdf{font-family:var(--mono);font-size:10.5px;color:var(--mudo);
           align-self:center;padding:0 4px}
         a.vs-btn{text-decoration:none;display:inline-block}
