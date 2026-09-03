@@ -1625,6 +1625,11 @@ export default function SelectorVentilacion() {
         .vs-memoria{white-space:pre-wrap;font-size:13.5px;line-height:1.62;color:var(--graf)}
         .vs-vacio{font-size:13px;color:var(--mudo);margin:0}
         .vs-fila{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .vs-cat-elegidos{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;
+          padding-bottom:14px;border-bottom:1px dashed var(--rule)}
+        .vs-cat-fila{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+        .vs-cat-fila .vs-lab{min-width:74px}
+        .vs-cat-fila .vs-btn{font-size:12px;padding:6px 11px}
         .vs-cat{font-family:var(--mono);font-size:11px;color:var(--mudo);margin:0;
           display:flex;align-items:center;gap:6px;flex-wrap:wrap}
         .vs-punto{width:7px;height:7px;border-radius:50%;flex:none;background:var(--mudo)}
@@ -1810,6 +1815,28 @@ export default function SelectorVentilacion() {
 
           <Panel indice="05" titulo="Catálogo"
             nota="El catálogo se descarga de Supabase al iniciar sesión. Usa Recargar si acabas de cambiar algo en la base.">
+            {(selExt || selIny) && (
+              <div className="vs-cat-elegidos">
+                {[["Extracción", selExt], ["Inyección", selIny]].map(([rot, eq]) => (
+                  <div key={rot} className="vs-cat-fila">
+                    <span className="vs-lab">{rot}</span>
+                    {!eq ? (
+                      <span className="vs-sin-pdf">sin equipo elegido</span>
+                    ) : eq.fichaUrl ? (
+                      <a className="vs-btn ghost" href={eq.fichaUrl}
+                        target="_blank" rel="noreferrer">
+                        Catálogo {eq.linea || eq.modelo}
+                      </a>
+                    ) : (
+                      <span className="vs-sin-pdf">
+                        {eq.linea || eq.modelo} · sin catálogo cargado
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <p className="vs-cat">
               <span className={"vs-punto " + (cargandoCat ? "cargando"
                 : origen === "supabase" ? "vivo" : "inerte")} />
