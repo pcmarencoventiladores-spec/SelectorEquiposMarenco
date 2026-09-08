@@ -42,11 +42,38 @@ const TIPOS = {
 
 const FT3_POR_M3 = 35.3147;
 const FT2_POR_M2 = 10.7639;
+/* 1 CFM son 60 pies cúbicos por hora, y un pie cúbico 0.028316846592 m³ */
+const M3H_POR_CFM = 1.69901;
 
-/* El catálogo ya no viaja dentro del archivo: con el acceso cerrado,
+/* Al convertir, los valores pequeños pierden todo si se redondean a
+   enteros: 1 CFM son 1.7 m³/h, no 2. Por eso los decimales dependen
+   de la magnitud. */
+/* Los campos de la calculadora son de texto, no numéricos: los de tipo
+   number no admiten separador de miles. Se limpia la coma al leer y se
+   vuelve a poner al mostrar, salvo mientras se escribe, para que no
+   salte el cursor. */
+function limpiarNum(t) {
+  return String(t).replace(/,/g, "").trim();
+}
+
+function conComas(t) {
+  const n = Number(limpiarNum(t));
+  if (!Number.isFinite(n) || limpiarNum(t) === "") return String(t);
+  const dec = (limpiarNum(t).split(".")[1] || "").length;
+  return n.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+
+function redondear(v) {
+  if (!Number.isFinite(v)) return "";
+  const abs = Math.abs(v);
+  return v.toFixed(abs < 10 ? 3 : abs < 1000 ? 1 : 0);
+}
+
+/* El catálogo no viaja dentro del archivo: con el acceso cerrado,
    incrustarlo sería dejarlo a la vista de cualquiera que abra el código
    fuente. Se carga desde Supabase después de iniciar sesión. */
 const CATALOGO_DEMO = [];
+
 
 
 function interpolar(puntos, x, col) {
@@ -103,7 +130,6 @@ const SUPABASE_ANON_KEY = ENV.VITE_SUPABASE_ANON_KEY || "";
 const IA_ENDPOINT = ENV.VITE_IA_ENDPOINT || "";
 const IA_ACTIVA = Boolean(IA_ENDPOINT);
 
-/* Prefijo vent_ para convivir con el resto del proyecto sin pisarlo. */
 const VISTA_EQUIPOS = "vent_equipos_con_curva";
 
 /* Las cuatro familias existen además como vistas propias en Supabase
@@ -139,7 +165,7 @@ async function cargarDesdeSupabase(base, clave, token) {
   if (!r.ok) {
     const detalle = await r.text().catch(() => "");
     const pistas = {
-      401: "La sesión caducó. Vuelve a pedir el enlace de acceso.",
+      401: "La sesión caducó. Vuelve a iniciarla.",
       403: `La política RLS no deja leer. Comprueba el grant select sobre ${VISTA_EQUIPOS}.`,
       404: `No existe la vista ${VISTA_EQUIPOS}. ¿Ejecutaste ya los scripts SQL?`,
     };
@@ -1227,6 +1253,8 @@ export default function SelectorVentilacion() {
   const [manualIny, setManualIny] = useState(null);
   const [servicio, setServicio] = useState("extraccion");
   const [lineaFiltro, setLineaFiltro] = useState("todas");
+  const [conv, setConv] = useState({ cfm: "", m3h: "" });
+  const [focoConv, setFocoConv] = useState(null);
 
   const [descripcion, setDescripcion] = useState("");
   const [interpretando, setInterpretando] = useState(false);
@@ -1271,6 +1299,7 @@ export default function SelectorVentilacion() {
   }, [conectarSupabase, sesion]);
 
   const salir = () => { borrarSesion(); setSesion(null); setCatalogo([]); setOrigen("demo"); };
+
 
   const calc = useMemo(() => {
     const area = num(dim.largo) * num(dim.ancho);
@@ -1514,6 +1543,7 @@ export default function SelectorVentilacion() {
     null, 2
   );
 
+
   if (!sesion) {
     return (
       <>
@@ -1625,6 +1655,24 @@ export default function SelectorVentilacion() {
         .vs-tag{display:inline-block;margin-top:4px;font-family:var(--mono);font-size:9px;
           letter-spacing:.07em;text-transform:uppercase;color:var(--air-txt);
           background:var(--airsoft);padding:2px 6px;border-radius:2px}
+        .vs-tabla-ref{margin-top:12px;border-top:1px dashed var(--rule);padding-top:10px}
+        .vs-tabla-ref summary{font-family:var(--mono);font-size:10px;letter-spacing:.09em;
+          text-transform:uppercase;color:var(--air-txt);cursor:pointer;list-style:none}
+        .vs-tabla-ref summary::-webkit-details-marker{display:none}
+        .vs-tabla-ref summary::before{content:"▸ ";display:inline-block;transition:transform .15s}
+        .vs-tabla-ref[open] summary::before{content:"▾ "}
+        .vs-tabla-ref table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+        .vs-tabla-ref th{font-family:var(--mono);font-size:8.5px;letter-spacing:.09em;
+          text-transform:uppercase;color:var(--mudo);font-weight:400;text-align:right;
+          padding:0 6px 5px;border-bottom:1px solid var(--rule)}
+        .vs-tabla-ref th:first-child{text-align:left}
+        .vs-tabla-ref td{padding:5px 6px;border-bottom:1px solid #eeeef3;text-align:right;
+          font-family:var(--mono);color:var(--graf)}
+        .vs-tabla-ref td:first-child{text-align:left;font-family:inherit}
+        .vs-tabla-ref tr.vs-clic{cursor:pointer}
+        .vs-tabla-ref tr.vs-clic:hover td{background:#f6f7fb}
+        .vs-tabla-ref tr.on td{background:var(--airsoft);color:var(--ink);font-weight:600}
+        .vs-ref-pie{margin:9px 0 0;font-size:11.5px;color:var(--mudo);line-height:1.5}
         .vs-tabla{width:100%;border-collapse:collapse;font-size:13px}
         .vs-tabla th{font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--mudo);
           text-align:right;padding:0 10px 7px;font-weight:400;border-bottom:1px solid var(--rule)}
@@ -1760,6 +1808,7 @@ export default function SelectorVentilacion() {
                 {interpretando ? "Interpretando…" : "Interpretar con Claude"}
               </button>
             </div>
+            {!IA_ACTIVA && <p className="vs-nota" style={{ padding: "9px 0 0", borderTop: "none" }}>Asistente sin configurar.</p>}
             {errIA && <p className="vs-err">{errIA}</p>}
           </Panel>
 
@@ -1794,15 +1843,7 @@ export default function SelectorVentilacion() {
             </div>
           </Panel>
 
-          <Panel indice="02" titulo="Tipo de área">
-            <label className="vs-campo" style={{ marginBottom: 11 }}>
-              <span className="vs-lab">Uso</span>
-              <select value={tipo} onChange={(e) => cambiarTipo(e.target.value)}>
-                {Object.entries(TIPOS).map(([k, v]) => (
-                  <option key={k} value={k}>{v.nombre} — {v.min} a {v.max} RPH</option>
-                ))}
-              </select>
-            </label>
+          <Panel indice="02" titulo="Tipo de área y renovaciones">
             <div className="vs-grid2">
               <label className="vs-campo">
                 <span className="vs-lab">Volumen<em>m³</em></span>
@@ -1813,27 +1854,69 @@ export default function SelectorVentilacion() {
                 <input type="text" readOnly value={fmt(calc.volumenFt3)} />
               </label>
             </div>
-          </Panel>
-
-          <Panel indice="03" titulo="Renovaciones de aire"
-            nota="Renovaciones usadas son las mínimas recomendadas">
-            <div className="vs-grid2">
+            <div className="vs-grid2" style={{ marginTop: 11 }}>
               <Campo etiqueta="Renovaciones" unidad="/h" paso={0.5} valor={ach} onChange={setAch} />
-              <label className="vs-campo">
-                <span className="vs-lab">Recomendado<em>RPH</em></span>
-                <input type="text" readOnly value={`${TIPOS[tipo].min} a ${TIPOS[tipo].max}`} />
-              </label>
             </div>
+
+            <details className="vs-tabla-ref" open>
+              <summary>Recomendaciones por tipo de área</summary>
+              <table>
+                <thead>
+                  <tr><th>Tipo de área</th><th>RPH</th></tr>
+                </thead>
+                <tbody>
+                  {Object.entries(TIPOS).map(([k, v]) => (
+                    <tr key={k} className={"vs-clic" + (k === tipo ? " on" : "")}
+                      onClick={() => cambiarTipo(k)}>
+                      <td>{v.nombre}</td>
+                      <td>{v.min} a {v.max}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
+
+            <details className="vs-tabla-ref" open>
+              <summary>Conversión de caudal</summary>
+              <div className="vs-grid2" style={{ marginTop: 10 }}>
+                <label className="vs-campo">
+                  <span className="vs-lab">Caudal<em>CFM</em></span>
+                  <input type="text" inputMode="decimal" placeholder="0"
+                    value={focoConv === "cfm" ? conv.cfm : conComas(conv.cfm)}
+                    onFocus={() => setFocoConv("cfm")}
+                    onBlur={() => setFocoConv(null)}
+                    onChange={(e) => {
+                      const v = limpiarNum(e.target.value);
+                      setConv({ cfm: v, m3h: v === "" ? "" : redondear(Number(v) * M3H_POR_CFM) });
+                    }} />
+                </label>
+                <label className="vs-campo">
+                  <span className="vs-lab">Caudal<em>m³/h</em></span>
+                  <input type="text" inputMode="decimal" placeholder="0"
+                    value={focoConv === "m3h" ? conv.m3h : conComas(conv.m3h)}
+                    onFocus={() => setFocoConv("m3h")}
+                    onBlur={() => setFocoConv(null)}
+                    onChange={(e) => {
+                      const v = limpiarNum(e.target.value);
+                      setConv({ m3h: v, cfm: v === "" ? "" : redondear(Number(v) / M3H_POR_CFM) });
+                    }} />
+                </label>
+              </div>
+              <p className="vs-ref-pie">
+                Escribe en cualquiera de los dos campos y el otro se calcula solo.
+                1 CFM = 1.69901 m³/h.
+              </p>
+            </details>
           </Panel>
 
-          <Panel indice="04" titulo="Presión estática">
+          <Panel indice="03" titulo="Presión estática">
             <div className="vs-grid2">
               <Campo etiqueta="Presión de diseño" unidad="in. w.g." paso={0.01} valor={presion}
                 onChange={setPresion} />
             </div>
           </Panel>
 
-          <Panel indice="05" titulo="Catálogo">
+          <Panel indice="04" titulo="Catálogo">
             <div className="vs-cat-elegidos">
               {[["Extracción", selExt], ["Inyección", selIny]].map(([rot, eq]) => (
                 <div key={rot} className="vs-cat-fila">
@@ -1863,7 +1946,7 @@ export default function SelectorVentilacion() {
             <p className="vs-eyebrow">Caudal de diseño</p>
             <div className="vs-cifra">
               <b>{fmt(calc.qReq)}</b>
-              <span>CFM</span>
+              <span>CFM · {fmt(calc.qReq * M3H_POR_CFM)} m³/h</span>
             </div>
             {selExt && (
               <p className="vs-req-eq">
@@ -1926,7 +2009,7 @@ export default function SelectorVentilacion() {
               <div>
                 <dt>Balance</dt>
                 <dd style={balance == null ? undefined
-                  : { color: Math.abs(balance) <= 10 ? "#7fd3d8" : "#ffab5c" }}>
+                  : { color: Math.abs(balance) < 0.05 ? "#7fd3d8" : "#ffab5c" }}>
                   {balance == null ? "—"
                     : `${balance >= 0 ? "+" : ""}${balance.toFixed(1)} %`}
                 </dd>
@@ -1936,16 +2019,16 @@ export default function SelectorVentilacion() {
               <p className="vs-balance">
                 {fmt(flujoIny)} CFM inyectados frente a {fmt(flujoExt)} extraídos:{" "}
                 <b>{balance >= 0 ? "+" : ""}{balance.toFixed(1)} %</b>.{" "}
-                {Math.abs(balance) <= 5
-                  ? "Prácticamente equilibrada."
+                {Math.abs(balance) < 0.05
+                  ? "Ventilación equilibrada."
                   : balance > 0
-                  ? "La nave queda en presión positiva: el aire sale por puertas y huecos."
-                  : "La nave queda en presión negativa: entra aire sin filtrar por puertas y huecos."}
+                  ? "La nave queda en presión positiva: sale aire por aberturas de la nave: puertas, ventanas, etc."
+                  : "La nave queda en presión negativa: entra aire por aberturas de la nave: puertas, ventanas, etc."}
               </p>
             )}
           </div>
 
-          <Panel indice="06"
+          <Panel indice="05"
             titulo={seleccion ? `Punto de operación · ${[seleccion.marca, seleccion.modelo].filter(Boolean).join(" ")}` : "Punto de operación"}>
             {!seleccion ? (
               <p className="vs-vacio">Carga un catálogo con al menos un equipo para trazar las curvas.</p>
@@ -1963,7 +2046,7 @@ export default function SelectorVentilacion() {
             ))}
           </Panel>
 
-          <Panel indice="07" titulo={`Equipos elegibles · ${servicio === "extraccion" ? "extracción" : "inyección"}`}
+          <Panel indice="06" titulo={`Equipos elegibles · ${servicio === "extraccion" ? "extracción" : "inyección"}`}
             nota="Ordenados por menos unidades, luego menos potencia total y menos sobrante. La columna en CFM es la diferencia entre el caudal instalado y el de diseño.">
             <div className="vs-filtros" style={{ marginBottom: 12 }}>
               {[["extraccion", "Extracción"], ["inyeccion", "Inyección"]].map(([v, t]) => (
@@ -2038,7 +2121,7 @@ export default function SelectorVentilacion() {
             </div>
           </Panel>
 
-          <Panel indice="08" titulo="Memoria de cálculo"
+          <Panel indice="07" titulo="Memoria de cálculo"
             nota="Redactada por Claude a partir de las cifras calculadas. Revísala y fírmala tú.">
             <div className="vs-fila">
               <button className="vs-btn" onClick={redactar} disabled={!IA_ACTIVA || redactando || !seleccion}>
@@ -2064,3 +2147,4 @@ export default function SelectorVentilacion() {
     </div>
   );
 }
+
