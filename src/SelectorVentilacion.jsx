@@ -218,7 +218,7 @@ const ESTILOS = `
   .vs-acceso .vs-campo{display:flex;flex-direction:column;gap:4px}
   .vs-acceso .vs-lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
     text-transform:uppercase;color:var(--mudo)}
-  .vs-acceso input{width:100%;font-family:var(--mono);font-size:14px;padding:9px;
+  .vs-acceso input{width:100%;font-family:var(--mono);font-size:16px;padding:10px;
     border:1px solid var(--rule);border-radius:3px;background:#fcfcfd;color:var(--ink)}
   .vs-acceso input:focus-visible,.vs-acceso button:focus-visible{outline:2px solid var(--air);outline-offset:1px}
   .vs-acceso .vs-btn{font:inherit;font-size:13px;font-weight:550;padding:9px 16px;
@@ -1628,6 +1628,64 @@ export default function SelectorVentilacion() {
         .vs-req-eq em{font-style:normal;color:#ffab5c}
         .vs-mini{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#414590;border:1px solid #414590;border-radius:3px}
         @media(max-width:560px){.vs-mini{grid-template-columns:1fr 1fr}}
+        /* ---------------- Móvil ----------------
+           El umbral son 640 px: por debajo, dos columnas de tabla ya no
+           caben sin desbordar. */
+        @media(max-width:640px){
+          .vs-root{padding:12px}
+          .vs-head{margin-bottom:16px}
+          .vs-head h1{font-size:21px}
+          .vs-wrap{gap:14px}
+
+          /* iOS amplía la página al enfocar un campo con letra menor de
+             16 px. Subirlos evita ese salto. */
+          .vs-root input[type=number],.vs-root input[type=text],
+          .vs-root select,.vs-root textarea{font-size:16px;padding:9px}
+
+          .vs-tabs{display:flex;width:100%}
+          .vs-tab{flex:1;padding:9px 4px;font-size:10.5px;text-align:center}
+
+          .vs-panel-body{padding:12px}
+          .vs-cifra b{font-size:32px}
+          .vs-mini{grid-template-columns:1fr 1fr}
+          .vs-readout{padding:14px}
+          .vs-req-eq{font-size:11.5px}
+
+          /* La tabla de equipos pasa de filas a fichas: seis columnas en
+             360 px obligarían a un desplazamiento lateral incómodo. */
+          .vs-scroll{overflow:visible}
+          .vs-tabla thead{display:none}
+          .vs-tabla,.vs-tabla tbody,.vs-tabla tr{display:block;width:100%}
+          .vs-tabla tr{border:1px solid var(--rule);border-radius:4px;
+            margin-bottom:8px;padding:8px 10px}
+          .vs-tabla tr.on{border-color:var(--air)}
+          .vs-tabla td{display:flex;justify-content:space-between;align-items:baseline;
+            border:none;padding:3px 0;text-align:right}
+          .vs-tabla td::before{content:attr(data-r);font-family:var(--mono);font-size:9px;
+            letter-spacing:.08em;text-transform:uppercase;color:var(--mudo);text-align:left}
+          .vs-tabla td:first-child{display:block;text-align:left;padding-bottom:6px;
+            margin-bottom:4px;border-bottom:1px solid var(--rule)}
+          .vs-tabla td:first-child::before{content:none}
+
+          .vs-cards{grid-template-columns:1fr}
+          .vs-card-img{min-height:150px}
+          .vs-filtros{gap:6px}
+          .vs-chip{font-size:11.5px;padding:5px 10px}
+
+          /* Los rótulos de los esquemas van en unidades del propio dibujo:
+             al encogerse el SVG se vuelven ilegibles si no se agrandan. */
+          .vs-tick{font-size:13px}
+          .vs-axis{font-size:12px}
+          .vs-cota text{font-size:15px}
+          .vs-op-etq{font-size:15px}
+          .vs-leyenda text{font-size:13px}
+          .vs-tabla-ref table{font-size:11.5px}
+        }
+
+        @media(max-width:400px){
+          .vs-grid2,.vs-grid3{grid-template-columns:1fr}
+          .vs-mini{grid-template-columns:1fr}
+
         .vs-mini div{background:var(--ink);padding:9px 10px}
         .vs-mini dt{font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#a9ace0;margin:0 0 3px}
         .vs-mini dd{margin:0;font-family:var(--mono);font-size:15px}
@@ -2107,13 +2165,13 @@ export default function SelectorVentilacion() {
                         </span>
                         {c.sinCurva && <span className="vs-tag">solo descarga libre</span>}
                       </td>
-                      <td>{fmt(c.qRef)}</td>
-                      <td>{c.unidades}</td>
-                      <td>{fmt(c.instalado)}</td>
-                      <td style={{ color: c.superavit > 40 ? "var(--air-txt)" : "var(--ink)" }}>
+                      <td data-r="CFM c/u">{fmt(c.qRef)}</td>
+                      <td data-r="Uds">{c.unidades}</td>
+                      <td data-r="Instalado">{fmt(c.instalado)}</td>
+                      <td data-r="en CFM" style={{ color: c.superavit > 40 ? "var(--air-txt)" : "var(--ink)" }}>
                         {c.superavitCfm >= 0 ? "+" : ""}{fmt(c.superavitCfm)}
                       </td>
-                      <td>{c.hpTotal != null ? c.hpTotal.toFixed(2) : "—"}</td>
+                      <td data-r="HP total">{c.hpTotal != null ? c.hpTotal.toFixed(2) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2147,4 +2205,3 @@ export default function SelectorVentilacion() {
     </div>
   );
 }
-
