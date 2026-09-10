@@ -1687,6 +1687,7 @@ export default function SelectorVentilacion() {
         @media(max-width:380px){
           .vs-grid2,.vs-grid3{grid-template-columns:1fr}
           .vs-mini{grid-template-columns:1fr}
+        }
 
         .vs-mini div{background:var(--ink);padding:9px 10px}
         .vs-mini dt{font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#a9ace0;margin:0 0 3px}
