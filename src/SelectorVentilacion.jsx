@@ -1159,11 +1159,11 @@ function PaginaRecirculacion({ catalogo, ancho, largo, hombro, cumbrera, onAncho
           </p>
           <dl className="vs-mini">
             <div>
-              <dt>Con alcance máximo</dt>
+              <dt>Unidades considerando alcance máximo</dt>
               <dd>{udMin.toFixed(2)} ud</dd>
             </div>
             <div>
-              <dt>Con alcance mínimo</dt>
+              <dt>Unidades considerando alcance mínimo</dt>
               <dd>{udMax.toFixed(2)} ud</dd>
             </div>
             <div>
