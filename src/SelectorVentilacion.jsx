@@ -1629,9 +1629,11 @@ export default function SelectorVentilacion() {
         .vs-mini{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#414590;border:1px solid #414590;border-radius:3px}
         @media(max-width:560px){.vs-mini{grid-template-columns:1fr 1fr}}
         /* ---------------- Móvil ----------------
-           El umbral son 640 px: por debajo, dos columnas de tabla ya no
-           caben sin desbordar. */
-        @media(max-width:640px){
+           El umbral son 480 px, no 640: por encima de ese ancho ya cabe
+           el diseño de dos columnas, y así los paneles estrechos donde se
+           incrusta la aplicación siguen mostrando la vista de escritorio.
+           Los teléfonos van de 360 a 430 px, dentro del rango. */
+        @media(max-width:480px){
           .vs-root{padding:12px}
           .vs-head{margin-bottom:16px}
           .vs-head h1{font-size:21px}
@@ -1682,7 +1684,7 @@ export default function SelectorVentilacion() {
           .vs-tabla-ref table{font-size:11.5px}
         }
 
-        @media(max-width:400px){
+        @media(max-width:380px){
           .vs-grid2,.vs-grid3{grid-template-columns:1fr}
           .vs-mini{grid-template-columns:1fr}
 
