@@ -1584,6 +1584,7 @@ export default function SelectorVentilacion() {
         .vs-root input[type=number],.vs-root input[type=text],.vs-root select,.vs-root textarea{width:100%;font-family:var(--mono);font-size:14px;
           padding:7px 9px;border:1px solid var(--rule);border-radius:3px;background:#fcfcfd;color:var(--ink)}
         .vs-root input[readonly]{background:#f4f4f8;color:var(--graf)}
+        .vs-root input:disabled{background:#f4f4f8;color:var(--mudo);cursor:not-allowed}
         .vs-root textarea{font-family:inherit;font-size:13.5px;resize:vertical}
         .vs-root select{font-family:inherit;font-size:13.5px}
         .vs-root input:focus-visible,.vs-root select:focus-visible,.vs-root textarea:focus-visible,.vs-root button:focus-visible{
@@ -2130,8 +2131,21 @@ export default function SelectorVentilacion() {
               </label>
               <label className="vs-campo" style={{ maxWidth: 110 }}>
                 <span className="vs-lab">Unidades</span>
+                {/* Sin equipo elegido no hay nada que multiplicar: el campo
+                    se desactiva en lugar de mostrar un cero que no responde. */}
                 <input type="number" min={1} step={1}
-                  value={servicio === "extraccion" ? udsExt : udsIny}
+                  disabled={!(servicio === "extraccion" ? selExt : selIny)}
+                  placeholder="—"
+                  value={
+                    (servicio === "extraccion" ? selExt : selIny)
+                      ? servicio === "extraccion" ? udsExt : udsIny
+                      : ""
+                  }
+                  title={
+                    (servicio === "extraccion" ? selExt : selIny)
+                      ? undefined
+                      : "Elige antes un equipo en la tabla"
+                  }
                   onChange={(e) => {
                     const v = e.target.value === "" ? null : Number(e.target.value);
                     servicio === "extraccion" ? setManualExt(v) : setManualIny(v);
@@ -2208,3 +2222,4 @@ export default function SelectorVentilacion() {
     </div>
   );
 }
+
